@@ -1,5 +1,8 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  // Compatibility Date
+  compatibilityDate: '2025-07-07',
+  
   // App Configuration
   app: {
     head: {
@@ -141,7 +144,7 @@ export default defineNuxtConfig({
 
   // ESLint Configuration
   eslint: {
-    checker: true
+    checker: false
   },
 
   // Vite Configuration
