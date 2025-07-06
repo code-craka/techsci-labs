@@ -47,8 +47,7 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
     '@vueuse/nuxt',
-    '@nuxtjs/color-mode',
-    '@nuxt/eslint'
+    '@nuxtjs/color-mode'
   ],
 
   // UI Configuration
@@ -142,10 +141,6 @@ export default defineNuxtConfig({
     viewer: true
   },
 
-  // ESLint Configuration
-  eslint: {
-    checker: false
-  },
 
   // Vite Configuration
   vite: {

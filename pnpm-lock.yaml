@@ -233,6 +233,9 @@ importers:
       vitest:
         specifier: '>=2.1.8'
         version: 3.2.4(@types/node@22.16.0)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(sass@1.89.2)
+      vue-eslint-parser:
+        specifier: ^10.2.0
+        version: 10.2.0(eslint@9.30.1)
       vue-tsc:
         specifier: ^2.1.6
         version: 2.2.12(typescript@5.8.3)
@@ -13630,6 +13633,23 @@ packages:
   /vue-devtools-stub@0.1.0:
     resolution: {integrity: sha512-RutnB7X8c5hjq39NceArgXg28WZtZpGc3+J16ljMiYnFhKvd8hITxSWQSQ5bvldxMDU6gG5mkxl1MTQLXckVSQ==}
     dev: false
+
+  /vue-eslint-parser@10.2.0(eslint@9.30.1):
+    resolution: {integrity: sha512-CydUvFOQKD928UzZhTp4pr2vWz1L+H99t7Pkln2QSPdvmURT0MoC4wUccfCnuEaihNsu9aYYyk+bep8rlfkUXw==}
+    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    peerDependencies:
+      eslint: ^8.57.0 || ^9.0.0
+    dependencies:
+      debug: 4.4.1(supports-color@5.5.0)
+      eslint: 9.30.1
+      eslint-scope: 8.4.0
+      eslint-visitor-keys: 4.2.1
+      espree: 10.4.0
+      esquery: 1.6.0
+      semver: 7.7.2
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
 
   /vue-eslint-parser@9.4.3(eslint@9.30.1):
     resolution: {integrity: sha512-2rYRLWlIpaiN8xbPiDyXZXRgLGOtWxERV7ND5fFAv5qo1D2N9Fu9MNajBNc6o13lZ+24DAWCkQCvj4klgmcITg==}
