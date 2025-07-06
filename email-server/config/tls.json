@@ -1,0 +1,89 @@
+{
+  "tls": {
+    "enabled": true,
+    "required": true,
+    "protocols": ["TLSv1.2", "TLSv1.3"],
+    "ciphers": [
+      "ECDHE-RSA-AES256-GCM-SHA384",
+      "ECDHE-RSA-AES128-GCM-SHA256",
+      "ECDHE-RSA-AES256-SHA384",
+      "ECDHE-RSA-AES128-SHA256",
+      "DHE-RSA-AES256-GCM-SHA384",
+      "DHE-RSA-AES128-GCM-SHA256"
+    ],
+    "honor_cipher_order": true,
+    "compression": false,
+    "session_cache": true,
+    "session_timeout": 300,
+    "verify_certificate": true,
+    "certificate": {
+      "key": "/etc/ssl/private/techsci-email.key",
+      "cert": "/etc/ssl/certs/techsci-email.crt",
+      "ca": "/etc/ssl/certs/ca-bundle.crt"
+    },
+    "starttls": {
+      "enabled": true,
+      "required": true,
+      "advertise": true
+    },
+    "security_level": "high",
+    "min_protocol": "TLSv1.2",
+    "ecdh_curve": "secp384r1",
+    "dhparam": "/etc/ssl/dhparam.pem"
+  },
+  "smtp": {
+    "ports": {
+      "25": {
+        "tls_enabled": true,
+        "starttls_required": true,
+        "description": "Standard SMTP with mandatory STARTTLS"
+      },
+      "587": {
+        "tls_enabled": true,
+        "starttls_required": true,
+        "auth_required": true,
+        "description": "Submission port with mandatory TLS and auth"
+      },
+      "2525": {
+        "tls_enabled": true,
+        "starttls_required": true,
+        "auth_required": true,
+        "description": "Alternative submission port"
+      }
+    }
+  },
+  "imap": {
+    "enabled": true,
+    "ports": {
+      "143": {
+        "starttls_required": true,
+        "description": "IMAP with mandatory STARTTLS"
+      },
+      "993": {
+        "ssl_enabled": true,
+        "description": "IMAPS (SSL/TLS)"
+      }
+    }
+  },
+  "pop3": {
+    "enabled": true,
+    "ports": {
+      "110": {
+        "starttls_required": true,
+        "description": "POP3 with mandatory STARTTLS"
+      },
+      "995": {
+        "ssl_enabled": true,
+        "description": "POP3S (SSL/TLS)"
+      }
+    }
+  },
+  "security": {
+    "reject_unencrypted": true,
+    "require_valid_certificates": true,
+    "minimum_key_size": 2048,
+    "allowed_protocols": ["TLSv1.2", "TLSv1.3"],
+    "hsts_enabled": true,
+    "perfect_forward_secrecy": true
+  }
+}

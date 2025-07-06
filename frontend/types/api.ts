@@ -4,14 +4,14 @@
  */
 
 // Base API Response Structure
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   '@context': string
   '@id': string
   '@type': string
   data?: T
 }
 
-export interface ApiCollection<T = any> {
+export interface ApiCollection<T = unknown> {
   '@context': string
   '@id': string
   '@type': string
@@ -77,6 +77,14 @@ export interface Domain {
   quotaLimit: number
   createdAt: string
   updatedAt: string
+  // Additional computed properties for domain details view
+  status: 'active' | 'inactive' | 'pending' | 'error'
+  emailCount: number
+  messagesCount: number
+  storageUsed: number
+  type: 'domain' | 'subdomain' | 'alias'
+  catchAll: boolean // Alias for isCatchAll to match component usage
+  lastCheck: string
 }
 
 export interface DnsRecord {
@@ -316,7 +324,7 @@ export interface WebhookEvent {
 }
 
 // Pagination Response Types
-export interface PaginatedResponse<T = any> {
+export interface PaginatedResponse<T = unknown> {
   data: T[]
   pagination: {
     page: number

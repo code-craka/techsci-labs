@@ -1,0 +1,137 @@
+framework:
+    cache:
+        # Main cache configuration
+        app: cache.adapter.redis
+        system: cache.adapter.redis
+        
+        # Multiple cache pools for different use cases
+        pools:
+            # Database query cache
+            cache.database:
+                adapter: cache.adapter.redis
+                default_lifetime: 3600  # 1 hour
+                tags: true
+                
+            # Email content cache
+            cache.email:
+                adapter: cache.adapter.redis
+                default_lifetime: 1800  # 30 minutes
+                tags: true
+                
+            # API response cache
+            cache.api:
+                adapter: cache.adapter.redis
+                default_lifetime: 300   # 5 minutes
+                tags: true
+                
+            # Session cache
+            cache.session:
+                adapter: cache.adapter.redis
+                default_lifetime: 86400 # 24 hours
+                
+            # Static content cache
+            cache.static:
+                adapter: cache.adapter.filesystem
+                default_lifetime: 31536000  # 1 year
+                
+            # Search results cache
+            cache.search:
+                adapter: cache.adapter.redis
+                default_lifetime: 600   # 10 minutes
+                tags: true
+                
+            # Rate limiting cache
+            cache.rate_limit:
+                adapter: cache.adapter.redis
+                default_lifetime: 3600  # 1 hour
+                
+            # Doctrine result cache
+            doctrine.result_cache:
+                adapter: cache.adapter.redis
+                default_lifetime: 1800  # 30 minutes
+                tags: true
+                
+            # Doctrine query cache
+            doctrine.query_cache:
+                adapter: cache.adapter.redis
+                default_lifetime: 3600  # 1 hour
+                
+            # Doctrine metadata cache
+            doctrine.metadata_cache:
+                adapter: cache.adapter.redis
+                default_lifetime: 86400 # 24 hours
+
+# Redis adapter configuration
+services:
+    cache.adapter.redis:
+        class: Symfony\Component\Cache\Adapter\RedisAdapter
+        arguments:
+            - '@redis.connection'
+            - 'techsci'  # namespace
+            - 0          # default lifetime
+            
+    redis.connection:
+        class: Redis
+        factory: ['Symfony\Component\Cache\Adapter\RedisAdapter', 'createConnection']
+        arguments:
+            - '%env(REDIS_URL)%'
+            - {
+                compression: 'gzip',
+                serializer: 'php',
+                lazy: false,
+                persistent: true,
+                persistent_id: 'techsci_cache',
+                tcp_keepalive: 1,
+                timeout: 30,
+                read_timeout: 30
+              }
+
+# Doctrine MongoDB cache configuration
+doctrine_mongodb:
+    document_managers:
+        default:
+            metadata_cache_driver:
+                type: pool
+                pool: doctrine.metadata_cache
+            query_cache_driver:
+                type: pool
+                pool: doctrine.query_cache
+            result_cache_driver:
+                type: pool
+                pool: doctrine.result_cache
+
+# Environment-specific cache settings
+when@prod:
+    framework:
+        cache:
+            pools:
+                cache.database:
+                    default_lifetime: 7200  # 2 hours in production
+                cache.api:
+                    default_lifetime: 600   # 10 minutes in production
+                cache.search:
+                    default_lifetime: 1800  # 30 minutes in production
+
+when@dev:
+    framework:
+        cache:
+            pools:
+                cache.database:
+                    default_lifetime: 60    # 1 minute in development
+                cache.api:
+                    default_lifetime: 0     # No caching in development
+                cache.search:
+                    default_lifetime: 60    # 1 minute in development
+
+when@test:
+    framework:
+        cache:
+            pools:
+                cache.database:
+                    adapter: cache.adapter.array
+                cache.email:
+                    adapter: cache.adapter.array
+                cache.api:
+                    adapter: cache.adapter.array
+                cache.search:
+                    adapter: cache.adapter.array

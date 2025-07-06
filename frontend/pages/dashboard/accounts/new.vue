@@ -10,7 +10,7 @@
     </div>
     
     <div class="bg-white rounded-lg shadow-md p-6">
-      <form class="space-y-6">
+      <form class="space-y-6" @submit.prevent="submitForm">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label for="username" class="block text-sm font-medium text-gray-700 mb-2">Username</label>
@@ -173,8 +173,19 @@
           <NuxtLink to="/dashboard/accounts" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors">
             Cancel
           </NuxtLink>
-          <button type="submit" class="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors">
-            Create Account
+          <button 
+            type="submit" 
+            :disabled="isLoading"
+            class="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="isLoading" class="inline-flex items-center">
+              <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Creating...
+            </span>
+            <span v-else>Create Account</span>
           </button>
         </div>
       </form>
@@ -188,6 +199,8 @@ definePageMeta({
   title: 'Create Email Account - Dashboard',
   description: 'Create a new email account or alias'
 })
+
+const { createAccount, isLoading, error } = useAccount()
 
 // Reactive form data
 const accountForm = ref({
@@ -228,12 +241,47 @@ const removeMember = (index: number) => {
 
 const submitForm = async () => {
   try {
-    // TODO: Implement account creation logic
-    console.log('Creating account:', accountForm.value)
-    // Redirect to accounts list after creation
+    // Validate password confirmation
+    if (accountForm.value.password !== accountForm.value.confirmPassword) {
+      throw new Error('Passwords do not match')
+    }
+
+    // Create account via composable
+    await createAccount({
+      email: `${accountForm.value.username}@${accountForm.value.domain}`,
+      password: accountForm.value.password,
+      domain: accountForm.value.domain,
+      displayName: accountForm.value.displayName || undefined,
+      type: accountForm.value.type as 'standard' | 'alias' | 'distribution',
+      forwardTo: accountForm.value.type === 'alias' ? accountForm.value.forwardTo : undefined,
+      distributionMembers: accountForm.value.type === 'distribution' ? accountForm.value.distributionMembers.filter(m => m.trim()) : undefined,
+      quotaLimit: accountForm.value.quotaLimit === 'unlimited' ? null : parseInt(accountForm.value.quotaLimit),
+      options: {
+        enablePlusAliasing: accountForm.value.options.enablePlusAliasing,
+        enableAutoResponder: accountForm.value.options.enableAutoResponder,
+        enableSpamFilter: accountForm.value.options.enableSpamFilter
+      }
+    })
+
+    // Show success message
+    const toast = useToast()
+    toast.add({
+      title: 'Account Created',
+      description: `Email account ${emailPreview.value} has been created successfully.`,
+      color: 'green'
+    })
+
+    // Redirect to accounts list
     await navigateTo('/dashboard/accounts')
-  } catch (error) {
-    console.error('Error creating account:', error)
+  } catch (err) {
+    // Show error message
+    const toast = useToast()
+    const errorMessage = error.value || err.message || 'An unexpected error occurred'
+    toast.add({
+      title: 'Account Creation Failed',
+      description: errorMessage,
+      color: 'red'
+    })
   }
 }
 </script>

@@ -1,6 +1,7 @@
 # Claude AI Development Guidelines
 
 ## Project Overview
+
 **TechSci Labs Email Testing Platform** - A developer-focused email testing platform built with Nuxt.js, API-Platform, and Mercure for real-time communication.
 
 ## AI Assistance Scope
@@ -8,6 +9,7 @@
 ### ✅ What Claude Can Help With
 
 #### Frontend Development (Nuxt.js)
+
 - **Nuxt.js 3.x Implementation**: Pages, layouts, composables, middleware
 - **Vue.js 3 Features**: Composition API, script setup, reactive patterns
 - **Tailwind CSS Integration**: Utility classes, responsive design, dark/light themes
@@ -16,17 +18,20 @@
 - **State Management**: Pinia store patterns, reactive state
 
 #### Backend Integration
+
 - **API-Platform Integration**: RESTful APIs, Hydra JSON-LD, OpenAPI documentation
 - **Mercure SSE**: Real-time updates, event subscriptions, connection handling
 - **Authentication**: JWT handling, session management, API key authentication
 - **Performance**: Caching strategies, lazy loading, bundle optimization
 
 #### Email Infrastructure
+
 - **Haraka Integration**: SMTP server configuration, email parsing, plugin development
 - **Email Processing**: Plus-sign aliasing, catch-all domains, attachment handling
 - **MongoDB Schema**: Document design, aggregation pipelines, indexing strategies
 
 #### Development Workflow
+
 - **Code Review**: Best practices, security considerations, performance optimization
 - **Testing Strategy**: Vitest for unit tests, Playwright for E2E testing
 - **Build Optimization**: Nitro engine, server-side rendering, static generation
@@ -35,6 +40,7 @@
 ### ❌ What Claude Cannot Do
 
 #### Infrastructure & Deployment
+
 - Direct RockyLinux server configuration
 - Caddy web server setup and SSL management
 - MongoDB cluster deployment and sharding
@@ -42,6 +48,7 @@
 - Production environment provisioning
 
 #### External Service Integration
+
 - Haraka SMTP server installation and configuration
 - Mercure hub deployment and scaling
 - Email service provider configuration
@@ -50,6 +57,7 @@
 ### 🔧 Development Context
 
 #### Current Tech Stack
+
 ```json
 {
   "frontend": {
@@ -74,6 +82,7 @@
 ```
 
 #### Project Structure Knowledge
+
 ```
 techsci-labs/
 ├── frontend/               # Nuxt.js application
@@ -93,6 +102,7 @@ techsci-labs/
 ### 📋 Code Standards & Guidelines
 
 #### Vue.js/Nuxt.js Standards
+
 ```vue
 <!-- ✅ Preferred: Composition API with script setup -->
 <script setup lang="ts">
@@ -122,6 +132,7 @@ const { data: emails } = await $fetch<EmailAccount[]>(`/api/accounts/${props.acc
 ```
 
 #### API-Platform Entity Patterns
+
 ```php
 <?php
 // ✅ Preferred: Proper API-Platform annotations
@@ -153,6 +164,7 @@ class EmailAccount
 ```
 
 #### Mercure SSE Integration
+
 ```typescript
 // ✅ Real-time email notifications
 export const useEmailSubscription = (accountId: string) => {
@@ -185,6 +197,7 @@ export const useEmailSubscription = (accountId: string) => {
 ### 🚀 Feature Development Approach
 
 #### MongoDB Schema Design
+
 ```php
 // Email Account Document
 {
@@ -209,6 +222,7 @@ export const useEmailSubscription = (accountId: string) => {
 ```
 
 #### Haraka Plugin Development
+
 ```javascript
 // ✅ Email processing plugin
 exports.hook_data_post = function(next, connection) {
@@ -236,12 +250,14 @@ exports.hook_data_post = function(next, connection) {
 ### 📖 Development Workflow
 
 #### Before Starting New Features
+
 1. **Review API Documentation**: Check API-Platform specs and Hydra contexts
 2. **Plan Vue Components**: Design component hierarchy and props interface
 3. **Consider Real-time**: Identify Mercure subscription requirements
 4. **Performance Review**: Evaluate MongoDB queries and caching needs
 
 #### Code Review Checklist
+
 - [ ] Vue.js composition API compliance
 - [ ] API-Platform annotations correct
 - [ ] Mercure event handling implemented
@@ -251,6 +267,7 @@ exports.hook_data_post = function(next, connection) {
 - [ ] Mobile responsiveness
 
 #### Testing Strategy
+
 ```typescript
 // Unit tests for composables
 import { describe, it, expect } from 'vitest'
@@ -270,12 +287,14 @@ describe('useEmailValidation', () => {
 ### 🔍 Performance Considerations
 
 #### Nuxt.js Optimization
+
 - Use server-side rendering for initial page load
 - Implement code splitting with dynamic imports
 - Optimize images with Nuxt Image module
 - Enable Nitro caching for API responses
 
 #### MongoDB Performance
+
 - Index frequently queried fields
 - Use aggregation pipelines for complex queries
 - Implement proper connection pooling
@@ -284,6 +303,7 @@ describe('useEmailValidation', () => {
 ### 🔒 Security Guidelines
 
 #### API-Platform Security
+
 ```php
 // ✅ Secure entity with proper validation
 #[ApiResource(
@@ -300,6 +320,7 @@ class EmailAccount
 ```
 
 #### Frontend Security
+
 - Store JWT tokens securely (httpOnly cookies)
 - Validate all user inputs with Zod schemas
 - Implement CSRF protection
@@ -308,6 +329,7 @@ class EmailAccount
 ### 📚 Resources & References
 
 #### Documentation Links
+
 - [Nuxt.js 3 Documentation](https://nuxt.com/docs)
 - [API-Platform Documentation](https://api-platform.com/docs)
 - [Mercure Documentation](https://mercure.rocks/docs)
@@ -315,6 +337,7 @@ class EmailAccount
 - [Vue.js 3 Documentation](https://vuejs.org/guide)
 
 #### Project-Specific Resources
+
 - API Documentation: `/docs/api.md`
 - Component Library: `/docs/components.md`
 - Deployment Guide: `/docs/deployment.md`

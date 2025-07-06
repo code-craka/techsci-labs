@@ -2,11 +2,11 @@
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-md">
       <div class="flex justify-center">
-        <NuxtImg 
+        <img 
           src="/logo.svg" 
           alt="TechSci Labs" 
           class="h-12 w-auto"
-        />
+        >
       </div>
       <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
         Sign in to your account

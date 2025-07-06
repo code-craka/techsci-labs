@@ -1,0 +1,50 @@
+framework:
+    rate_limiter:
+        # Authentication rate limiting
+        auth_limiter:
+            policy: sliding_window
+            limit: 5
+            interval: '15 minutes'
+            rate_limiter: cache.app
+
+        # API general rate limiting
+        api_limiter:
+            policy: sliding_window
+            limit: 100
+            interval: '1 hour'
+            rate_limiter: cache.app
+
+        # Email operations rate limiting
+        email_limiter:
+            policy: sliding_window
+            limit: 50
+            interval: '10 minutes'
+            rate_limiter: cache.app
+
+        # Password reset rate limiting
+        password_reset_limiter:
+            policy: sliding_window
+            limit: 3
+            interval: '1 hour'
+            rate_limiter: cache.app
+
+        # Email sending rate limiting
+        email_send_limiter:
+            policy: sliding_window
+            limit: 20
+            interval: '1 hour'
+            rate_limiter: cache.app
+
+        # Attachment upload rate limiting
+        attachment_limiter:
+            policy: sliding_window
+            limit: 10
+            interval: '5 minutes'
+            rate_limiter: cache.app
+
+        # Domain operations rate limiting
+        domain_limiter:
+            policy: sliding_window
+            limit: 10
+            interval: '10 minutes'
+            rate_limiter: cache.app

@@ -1,0 +1,293 @@
+# CDN Configuration for TechSci Labs Email Platform
+# Static assets and attachment delivery optimization
+
+# Main CDN domain for static assets
+cdn.techsci.dev {
+    # Enable gzip compression
+    encode gzip zstd
+
+    # Security headers for CDN content
+    header {
+        # Cache control
+        Cache-Control "public, max-age=31536000, immutable"
+        
+        # Security headers
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        
+        # CORS for assets
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+        Access-Control-Allow-Headers "Range, If-Range, Cache-Control"
+    }
+
+    # Static assets from frontend
+    @static {
+        path /_nuxt/* /assets/* /images/* /fonts/* /css/* /js/*
+        file
+    }
+    handle @static {
+        # Aggressive caching for static assets (1 year)
+        header Cache-Control "public, max-age=31536000, immutable"
+        header Vary "Accept-Encoding"
+        
+        # Serve from frontend build directory
+        root * /var/www/frontend/.output/public
+        file_server
+    }
+
+    # Email attachments
+    @attachments {
+        path /attachments/*
+    }
+    handle @attachments {
+        # Moderate caching for attachments (1 hour)
+        header Cache-Control "public, max-age=3600"
+        header Content-Disposition "attachment"
+        
+        # Security scan headers
+        header X-Content-Scanned "true"
+        header X-Virus-Status "clean"
+        
+        # Rate limiting for attachment downloads
+        rate_limit {
+            zone attachments 10r/m
+            key {remote_host}
+        }
+        
+        reverse_proxy backend:8000 {
+            header_up X-CDN-Request "true"
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # Image proxy and optimization
+    @images {
+        path /images/* /thumbnails/*
+    }
+    handle @images {
+        # Image-specific caching
+        header Cache-Control "public, max-age=86400" # 1 day
+        header Vary "Accept, Accept-Encoding"
+        
+        # WebP conversion for modern browsers
+        @webp_support {
+            header Accept "*webp*"
+        }
+        handle @webp_support {
+            header Content-Type "image/webp"
+        }
+        
+        reverse_proxy backend:8000 {
+            header_up X-CDN-Request "true"
+            header_up X-Image-Optimize "true"
+        }
+    }
+
+    # API responses caching
+    @api_cache {
+        path /api/public/* /api/stats/* /api/health
+        method GET
+    }
+    handle @api_cache {
+        # Short caching for public API responses
+        header Cache-Control "public, max-age=300" # 5 minutes
+        header Vary "Accept, Authorization"
+        
+        reverse_proxy backend:8000 {
+            header_up X-CDN-Request "true"
+            header_up X-Cache-Enabled "true"
+        }
+    }
+
+    # Default handler - no caching
+    handle {
+        header Cache-Control "no-cache, no-store, must-revalidate"
+        reverse_proxy backend:8000
+    }
+
+    # Enable HTTP/2 push for critical resources
+    push /_nuxt/entry.*.css
+    push /_nuxt/entry.*.js
+    push /fonts/inter.woff2
+
+    # Logging for CDN analytics
+    log {
+        output file /var/log/caddy/cdn-access.log
+        format json {
+            time_format "iso8601"
+            message_key "msg"
+        }
+        level INFO
+    }
+}
+
+# Assets subdomain for frontend static files
+assets.techsci.dev {
+    encode gzip zstd
+    
+    # Long-term caching for assets
+    header Cache-Control "public, max-age=31536000, immutable"
+    header X-Content-Type-Options "nosniff"
+    
+    # CORS for cross-origin requests
+    header Access-Control-Allow-Origin "*"
+    header Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+    
+    # Serve static files
+    root * /var/www/frontend/.output/public
+    file_server {
+        hide .htaccess
+        index off
+    }
+    
+    # Handle missing files gracefully
+    handle_errors {
+        @404 {
+            expression {http.error.status_code} == 404
+        }
+        handle @404 {
+            respond "Asset not found" 404
+        }
+    }
+}
+
+# Media subdomain for email attachments and media
+media.techsci.dev {
+    encode gzip zstd
+    
+    # Security headers for media content
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Content-Security-Policy "default-src 'none'; img-src 'self'; media-src 'self'"
+        Referrer-Policy "strict-origin"
+    }
+    
+    # Authentication required for sensitive media
+    @authenticated {
+        header Authorization "*"
+    }
+    handle @authenticated {
+        # Shorter cache for authenticated content
+        header Cache-Control "private, max-age=3600"
+        
+        reverse_proxy backend:8000 {
+            header_up X-Media-Request "true"
+            header_up X-Auth-Required "true"
+        }
+    }
+    
+    # Public media (with rate limiting)
+    @public {
+        path /public/*
+    }
+    handle @public {
+        header Cache-Control "public, max-age=86400"
+        
+        # Rate limiting for public media
+        rate_limit {
+            zone public_media 50r/m
+            key {remote_host}
+        }
+        
+        reverse_proxy backend:8000 {
+            header_up X-Media-Request "true"
+            header_up X-Public-Content "true"
+        }
+    }
+    
+    # Default: require authentication
+    handle {
+        header Cache-Control "no-cache"
+        respond "Authentication required" 401
+    }
+}
+
+# Global CDN optimizations
+(cdn_optimize) {
+    # Compression for text-based content
+    encode {
+        gzip 6
+        zstd
+        minimum_length 1024
+    }
+    
+    # Performance headers
+    header {
+        # DNS prefetch control
+        X-DNS-Prefetch-Control "on"
+        
+        # Connection keep-alive
+        Connection "keep-alive"
+        
+        # Server information
+        Server "TechSci-CDN/1.0"
+        
+        # Timing headers for performance monitoring
+        Server-Timing "cdn;dur=0"
+    }
+    
+    # HTTP/3 support
+    protocols h1 h2 h3
+}
+
+# Development CDN (when not using external CDN)
+{$CDN_DOMAIN:localhost:8090} {
+    import cdn_optimize
+    
+    # Local development settings
+    header {
+        Cache-Control "no-cache, no-store, must-revalidate"
+        X-Development-Mode "true"
+    }
+    
+    # Proxy to appropriate services
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+    
+    handle /attachments/* {
+        reverse_proxy backend:8000
+    }
+    
+    handle /* {
+        reverse_proxy frontend:3000
+    }
+}
+
+# Production CDN configuration
+{$PRODUCTION_CDN:cdn.techsci.dev} {
+    import cdn_optimize
+    
+    # Production optimizations
+    header {
+        # Strict transport security
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        
+        # Additional security
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        
+        # Performance hints
+        Link "</fonts/inter.woff2>; rel=preload; as=font; type=font/woff2; crossorigin"
+        Link "</css/main.css>; rel=preload; as=style"
+    }
+    
+    # Edge caching with Cloudflare/AWS CloudFront headers
+    @edge_cacheable {
+        path /_nuxt/* /assets/* /fonts/* /images/*
+        file
+    }
+    handle @edge_cacheable {
+        header {
+            # CloudFront cache directives
+            CloudFront-Behaviors "compress=true,viewer-protocol-policy=redirect-to-https"
+            
+            # AWS S3 integration headers
+            x-amz-storage-class "STANDARD_IA"
+            x-amz-server-side-encryption "AES256"
+        }
+    }
+}

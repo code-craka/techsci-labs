@@ -1,0 +1,94 @@
+# TechSci Labs Email Testing Platform - Backend Dockerfile
+# Multi-stage Dockerfile for Symfony 7.1 + API Platform 3.2
+
+# Base PHP 8.2 with required extensions
+FROM php:8.2-fpm as base
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    libssl-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+
+# Install MongoDB extension (specific version for compatibility)
+RUN pecl install mongodb-1.21.0 && docker-php-ext-enable mongodb
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Development stage
+FROM base as dev
+
+# Copy composer files
+COPY composer.json composer.lock ./
+
+# Install Composer dependencies (with dev dependencies, ignore platform requirements)
+RUN composer install --no-scripts --no-autoloader --ignore-platform-req=ext-mongodb
+
+# Copy application code
+COPY . .
+
+# Generate autoloader and run scripts
+RUN composer dump-autoload --optimize && \
+    composer run-script post-install-cmd
+
+# Create required directories
+RUN mkdir -p var/cache var/log var/sessions && \
+    chown -R www-data:www-data var/
+
+# Expose port
+EXPOSE 8000
+
+# Start command for development
+CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
+
+# Production stage
+FROM base as prod
+
+# Install production-only dependencies
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --optimize-autoloader
+
+# Copy application code
+COPY . .
+
+# Generate optimized autoloader
+RUN composer dump-autoload --optimize --classmap-authoritative && \
+    composer run-script post-install-cmd
+
+# Create required directories with proper permissions
+RUN mkdir -p var/cache var/log var/sessions && \
+    chown -R www-data:www-data var/ && \
+    chmod -R 775 var/
+
+# Clear cache and warm up
+RUN php bin/console cache:clear --env=prod && \
+    php bin/console cache:warmup --env=prod
+
+# Use nginx + php-fpm for production
+FROM nginx:alpine as prod-nginx
+
+# Copy nginx configuration
+COPY infrastructure/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY infrastructure/nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Copy static assets from PHP container
+COPY --from=prod /var/www/html/public /var/www/html/public
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

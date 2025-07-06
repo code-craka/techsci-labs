@@ -1,0 +1,84 @@
+# TechSci Labs Email Testing Platform - Frontend Dockerfile
+# Multi-stage Dockerfile for Nuxt.js 3.17
+
+# Base Node.js image
+FROM node:20-alpine as base
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Set working directory
+WORKDIR /app
+
+# Development stage
+FROM base as development
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies
+RUN pnpm install --no-frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 3000
+
+# Set environment
+ENV NODE_ENV=development
+ENV NITRO_HOST=0.0.0.0
+ENV NITRO_PORT=3000
+
+# Start development server
+CMD ["pnpm", "dev"]
+
+# Build stage
+FROM base as build
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install all dependencies (including dev dependencies)
+RUN pnpm install --no-frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN pnpm build
+
+# Production stage
+FROM base as production
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install only production dependencies
+RUN pnpm install --no-frozen-lockfile --prod
+
+# Copy built application from build stage
+COPY --from=build /app/.output /app/.output
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Change ownership of the app directory
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# Expose port
+EXPOSE 3000
+
+# Set environment
+ENV NODE_ENV=production
+ENV NITRO_HOST=0.0.0.0
+ENV NITRO_PORT=3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD node --eval "fetch('http://localhost:3000').then(() => process.exit(0)).catch(() => process.exit(1))"
+
+# Start the application
+CMD ["node", ".output/server/index.mjs"]

@@ -1,0 +1,67 @@
+api_platform:
+    # CORS Configuration
+    cors:
+        enabled: true
+        allow_credentials: true
+        allow_origin: 
+            - '%env(resolve:CORS_ALLOW_ORIGIN)%'
+            - 'http://localhost:3000'
+            - 'http://localhost:3001'
+            - 'https://techsci.dev'
+            - 'https://app.techsci.dev'
+        allow_headers: 
+            - 'Accept'
+            - 'Accept-Language'
+            - 'Content-Language'
+            - 'Content-Type'
+            - 'Authorization'
+            - 'X-Requested-With'
+            - 'X-API-KEY'
+            - 'X-CSRF-Token'
+            - 'X-User-ID'
+            - 'Cache-Control'
+        allow_methods: 
+            - 'GET'
+            - 'POST'
+            - 'PUT'
+            - 'PATCH'
+            - 'DELETE'
+            - 'OPTIONS'
+        expose_headers:
+            - 'X-Total-Count'
+            - 'X-Pagination-Page'
+            - 'X-Pagination-Limit'
+            - 'X-RateLimit-Limit'
+            - 'X-RateLimit-Remaining'
+            - 'X-RateLimit-Reset'
+            - 'Link'
+        max_age: 3600
+
+# Framework CORS Configuration
+framework:
+    http_client:
+        default_options:
+            headers:
+                'Access-Control-Allow-Origin': '%env(resolve:CORS_ALLOW_ORIGIN)%'
+                'Access-Control-Allow-Credentials': 'true'
+
+# Environment-specific CORS rules
+when@prod:
+    api_platform:
+        cors:
+            allow_origin:
+                - 'https://techsci.dev'
+                - 'https://app.techsci.dev'
+                - 'https://webmail.techsci.dev'
+            max_age: 86400
+
+when@dev:
+    api_platform:
+        cors:
+            allow_origin:
+                - 'http://localhost:3000'
+                - 'http://localhost:3001'
+                - 'http://localhost:8080'
+                - 'http://127.0.0.1:3000'
+                - 'http://127.0.0.1:3001'
+            max_age: 0  # No caching in development

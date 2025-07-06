@@ -15,14 +15,14 @@
         class="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
         @keyup.enter="performSearch"
         @keyup.escape="clearSearch"
-      />
+      >
       
       <!-- Clear Button -->
       <div v-if="searchQuery" class="absolute inset-y-0 right-0 pr-3 flex items-center">
         <button
-          @click="clearSearch"
           class="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           aria-label="Clear search"
+          @click="clearSearch"
         >
           <Icon name="i-heroicons-x-mark" class="h-4 w-4 text-gray-400" />
         </button>
@@ -35,8 +35,8 @@
         <li
           v-for="(suggestion, index) in suggestions"
           :key="index"
-          @click="selectSuggestion(suggestion)"
           class="px-3 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          @click="selectSuggestion(suggestion)"
         >
           <div class="flex items-center">
             <Icon :name="suggestion.icon" class="h-4 w-4 text-gray-400 mr-2" />
@@ -49,8 +49,8 @@
     <!-- Advanced Search Toggle -->
     <div class="mt-4">
       <button
-        @click="showAdvanced = !showAdvanced"
         class="flex items-center text-sm text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 transition-colors"
+        @click="showAdvanced = !showAdvanced"
       >
         <Icon 
           :name="showAdvanced ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
@@ -73,7 +73,7 @@
             type="email"
             placeholder="sender@example.com"
             class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-          />
+          >
         </div>
         
         <div>
@@ -85,7 +85,7 @@
             type="email"
             placeholder="recipient@example.com"
             class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-          />
+          >
         </div>
       </div>
 
@@ -99,7 +99,7 @@
           type="text"
           placeholder="Email subject contains..."
           class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-        />
+        >
       </div>
 
       <!-- Date Range -->
@@ -112,7 +112,7 @@
             v-model="filters.dateFrom"
             type="date"
             class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-          />
+          >
         </div>
         
         <div>
@@ -123,7 +123,7 @@
             v-model="filters.dateTo"
             type="date"
             class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-          />
+          >
         </div>
       </div>
 
@@ -173,14 +173,14 @@
           type="text"
           placeholder="urgent, work, personal"
           class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-        />
+        >
       </div>
 
       <!-- Search Actions -->
       <div class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-600">
         <button
-          @click="clearAllFilters"
           class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          @click="clearAllFilters"
         >
           Clear All Filters
         </button>
@@ -214,8 +214,8 @@
           </span>
         </div>
         <button
-          @click="clearSearch"
           class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
+          @click="clearSearch"
         >
           Clear Search
         </button>
@@ -229,8 +229,8 @@
         <button
           v-for="saved in savedSearches"
           :key="saved.id"
-          @click="loadSavedSearch(saved)"
           class="inline-flex items-center px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          @click="loadSavedSearch(saved)"
         >
           <Icon name="i-heroicons-bookmark" class="h-3 w-3 mr-1" />
           {{ saved.name }}

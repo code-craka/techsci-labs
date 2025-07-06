@@ -15,11 +15,11 @@
         <div class="flex flex-col items-center space-y-4">
           <!-- Logo -->
           <div class="flex items-center space-x-2">
-            <NuxtImg 
+            <img 
               src="/logo.svg" 
               alt="TechSci Labs" 
               class="h-8 w-auto"
-            />
+            >
             <span class="text-lg font-semibold text-gray-900 dark:text-white">
               TechSci Labs
             </span>

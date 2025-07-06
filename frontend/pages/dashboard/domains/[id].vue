@@ -89,10 +89,18 @@
           </div>
           
           <div class="mt-4 flex space-x-4">
-            <button class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-              Verify DNS
+            <button 
+              @click="handleVerifyDns"
+              :disabled="isLoading"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              <span v-if="isLoading">Verifying...</span>
+              <span v-else>Verify DNS</span>
             </button>
-            <button class="px-4 py-2 text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 transition-colors">
+            <button 
+              @click="handleDownloadGuide"
+              class="px-4 py-2 text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+            >
               Download Guide
             </button>
           </div>
@@ -131,10 +139,16 @@
             <NuxtLink to="/dashboard/accounts/new" class="block w-full px-4 py-2 text-center text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 transition-colors">
               Add Email Account
             </NuxtLink>
-            <button class="w-full px-4 py-2 text-center text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+            <button 
+              @click="handleTestDelivery"
+              class="w-full px-4 py-2 text-center text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
               Test Email Delivery
             </button>
-            <button class="w-full px-4 py-2 text-center text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+            <button 
+              @click="handleViewLogs"
+              class="w-full px-4 py-2 text-center text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
               View Logs
             </button>
           </div>
@@ -144,10 +158,16 @@
         <div class="bg-white rounded-lg shadow-md p-6">
           <h3 class="font-semibold mb-4 text-red-600">Danger Zone</h3>
           <div class="space-y-3">
-            <button class="w-full px-4 py-2 text-center text-red-600 border border-red-600 rounded-md hover:bg-red-50 transition-colors">
+            <button 
+              @click="handleResetDns"
+              class="w-full px-4 py-2 text-center text-red-600 border border-red-600 rounded-md hover:bg-red-50 transition-colors"
+            >
               Reset DNS
             </button>
-            <button class="w-full px-4 py-2 text-center text-red-600 border border-red-600 rounded-md hover:bg-red-50 transition-colors">
+            <button 
+              @click="handleDeleteDomain"
+              class="w-full px-4 py-2 text-center text-red-600 border border-red-600 rounded-md hover:bg-red-50 transition-colors"
+            >
               Delete Domain
             </button>
           </div>
@@ -166,30 +186,180 @@ definePageMeta({
 
 // Get domain ID from route
 const route = useRoute()
-const domainId = route.params.id
+const domainId = route.params.id as string
 
-// Mock domain data - TODO: Replace with API call
-const domain = ref({
-  id: domainId,
-  name: 'example.com',
-  status: 'Verified',
-  type: 'Production',
-  catchAll: true,
-  emailCount: 47,
-  messagesCount: 1234,
-  storageUsed: '2.3 GB',
-  createdAt: 'Dec 1, 2024',
-  lastCheck: '2 mins ago'
-})
+const { 
+  currentDomain: domain, 
+  dnsRecords,
+  isLoading, 
+  error,
+  getDomain,
+  getDnsRecords,
+  verifyDomain,
+  generateDnsGuide,
+  testEmailDelivery,
+  getDomainLogs,
+  resetDomainDns,
+  deleteDomain
+} = useDomain()
 
 // Load domain data
 onMounted(async () => {
   try {
-    // TODO: Fetch domain data from API
-    // const response = await $fetch(`/api/domains/${domainId}`)
-    // domain.value = response
-  } catch (error) {
-    console.error('Error loading domain:', error)
+    await getDomain(domainId)
+    await getDnsRecords(domainId)
+  } catch (err) {
+    console.error('Error loading domain:', err)
   }
 })
+
+// Action handlers
+const handleVerifyDns = async () => {
+  try {
+    const result = await verifyDomain(domainId)
+    
+    const toast = useToast()
+    if (result.success) {
+      toast.add({
+        title: 'DNS Verification Successful',
+        description: 'All DNS records are configured correctly.',
+        color: 'green'
+      })
+    } else {
+      toast.add({
+        title: 'DNS Verification Issues',
+        description: result.issues?.join(', ') || 'Some DNS records need attention.',
+        color: 'yellow'
+      })
+    }
+  } catch (err) {
+    const toast = useToast()
+    toast.add({
+      title: 'Verification Failed',
+      description: error.value || 'Failed to verify DNS configuration.',
+      color: 'red'
+    })
+  }
+}
+
+const handleDownloadGuide = async () => {
+  try {
+    const guide = await generateDnsGuide(domainId)
+    
+    // Create and download file
+    const blob = new Blob([guide], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${domain.value?.name || 'domain'}-dns-guide.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    const toast = useToast()
+    toast.add({
+      title: 'Download Failed',
+      description: 'Failed to generate DNS configuration guide.',
+      color: 'red'
+    })
+  }
+}
+
+const handleTestDelivery = async () => {
+  const testEmail = prompt('Enter test email address:')
+  if (!testEmail) return
+
+  try {
+    const result = await testEmailDelivery(domainId, testEmail)
+    
+    const toast = useToast()
+    toast.add({
+      title: result.success ? 'Test Successful' : 'Test Failed',
+      description: result.message,
+      color: result.success ? 'green' : 'red'
+    })
+  } catch (err) {
+    const toast = useToast()
+    toast.add({
+      title: 'Test Failed',
+      description: error.value || 'Failed to test email delivery.',
+      color: 'red'
+    })
+  }
+}
+
+const handleViewLogs = async () => {
+  try {
+    const logs = await getDomainLogs(domainId)
+    
+    // For now, just show count in toast - in real app would open modal/page
+    const toast = useToast()
+    toast.add({
+      title: 'Domain Logs',
+      description: `Found ${logs.length} log entries. Check console for details.`,
+      color: 'blue'
+    })
+    
+    console.log('Domain logs:', logs)
+  } catch (err) {
+    const toast = useToast()
+    toast.add({
+      title: 'Failed to Load Logs',
+      description: error.value || 'Could not retrieve domain logs.',
+      color: 'red'
+    })
+  }
+}
+
+const handleResetDns = async () => {
+  if (!confirm('Are you sure you want to reset DNS configuration? This will regenerate all DNS records.')) {
+    return
+  }
+
+  try {
+    await resetDomainDns(domainId)
+    
+    const toast = useToast()
+    toast.add({
+      title: 'DNS Reset',
+      description: 'DNS configuration has been reset successfully.',
+      color: 'green'
+    })
+  } catch (err) {
+    const toast = useToast()
+    toast.add({
+      title: 'Reset Failed',
+      description: error.value || 'Failed to reset DNS configuration.',
+      color: 'red'
+    })
+  }
+}
+
+const handleDeleteDomain = async () => {
+  if (!confirm(`Are you sure you want to delete the domain "${domain.value?.name}"? This action cannot be undone.`)) {
+    return
+  }
+
+  try {
+    await deleteDomain(domainId)
+    
+    const toast = useToast()
+    toast.add({
+      title: 'Domain Deleted',
+      description: 'Domain has been deleted successfully.',
+      color: 'green'
+    })
+    
+    // Redirect to domains list
+    await navigateTo('/dashboard/domains')
+  } catch (err) {
+    const toast = useToast()
+    toast.add({
+      title: 'Delete Failed',
+      description: error.value || 'Failed to delete domain.',
+      color: 'red'
+    })
+  }
+}
 </script>

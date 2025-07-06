@@ -1,8 +1,13 @@
+/**
+ * Guest Middleware
+ * Redirects authenticated users away from guest-only pages
+ */
+
 export default defineNuxtRouteMiddleware(() => {
-  const { isAuthenticated } = useAuth()
+  const auth = useAuth()
   
   // If authenticated, redirect to dashboard
-  if (isAuthenticated.value) {
+  if (auth.isAuthenticated.value) {
     return navigateTo('/dashboard')
   }
 })

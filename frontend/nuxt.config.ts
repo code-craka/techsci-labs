@@ -30,10 +30,10 @@ export default defineNuxtConfig({
   },
 
   // Development Configuration
-  devtools: { enabled: true },
+  devtools: { enabled: false },
   typescript: {
     strict: true,
-    typeCheck: true
+    typeCheck: false // Disable for faster dev startup
   },
 
   // CSS Configuration
@@ -77,18 +77,34 @@ export default defineNuxtConfig({
     
     // Public keys (exposed to client-side)
     public: {
-      apiBase: process.env.API_BASE_URL || 'https://api.techsci.dev',
-      mercureUrl: process.env.MERCURE_URL || 'https://mercure.techsci.dev/.well-known/mercure',
-      webmailUrl: process.env.WEBMAIL_URL || 'https://webmail.techsci.dev',
+      // Use local development URLs for development
+      apiBase: process.env.API_BASE_URL || (process.env.NODE_ENV === 'production' ? 'https://api.techsci.dev' : 'http://localhost:8000/api'),
+      mercureUrl: process.env.MERCURE_URL || (process.env.NODE_ENV === 'production' ? 'https://mercure.techsci.dev/.well-known/mercure' : 'http://localhost:3001/.well-known/mercure'),
+      webmailUrl: process.env.WEBMAIL_URL || (process.env.NODE_ENV === 'production' ? 'https://webmail.techsci.dev' : 'http://localhost:8080'),
       appEnv: process.env.NODE_ENV || 'development',
-      siteUrl: process.env.SITE_URL || 'https://techsci.dev',
-      docsUrl: process.env.DOCS_URL || 'https://docs.techsci.dev'
+      siteUrl: process.env.SITE_URL || (process.env.NODE_ENV === 'production' ? 'https://techsci.dev' : 'http://localhost:3000'),
+      docsUrl: process.env.DOCS_URL || 'https://docs.techsci.dev',
+      
+      // API Configuration
+      apiTimeout: parseInt(process.env.API_TIMEOUT || '30000'),
+      apiRetries: parseInt(process.env.API_RETRIES || '3'),
+      
+      // Feature flags
+      enableRealtime: process.env.ENABLE_REALTIME !== 'false',
+      enableNotifications: process.env.ENABLE_NOTIFICATIONS !== 'false',
+      enableDebug: process.env.NODE_ENV === 'development'
     }
   },
 
   // Build Configuration
   build: {
-    transpile: ['@headlessui/vue']
+    transpile: ['@headlessui/vue'],
+    // Code splitting optimization
+    splitChunks: {
+      layouts: true,
+      pages: true,
+      commons: true
+    }
   },
 
   // Nitro Configuration
@@ -96,6 +112,12 @@ export default defineNuxtConfig({
     preset: 'node-server',
     experimental: {
       wasm: true
+    },
+    devStorage: {
+      redis: {
+        driver: 'redis',
+        // Optional config
+      }
     }
   },
 
@@ -114,14 +136,55 @@ export default defineNuxtConfig({
     viewTransition: true
   },
 
-  // Security Headers
+  // Security Headers & CSP
   routeRules: {
+    '/**': {
+      headers: {
+        // Content Security Policy for email content protection
+        'Content-Security-Policy': [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "img-src 'self' data: https: blob:",
+          "font-src 'self' https://fonts.gstatic.com data:",
+          "connect-src 'self' ws: wss: http://localhost:* https://api.techsci.dev https://mercure.techsci.dev",
+          "media-src 'self' data: blob:",
+          "object-src 'none'",
+          "base-uri 'self'",
+          "form-action 'self'",
+          "frame-ancestors 'none'",
+          "upgrade-insecure-requests"
+        ].join('; '),
+        // Additional security headers
+        'X-Frame-Options': 'DENY',
+        'X-Content-Type-Options': 'nosniff',
+        'X-XSS-Protection': '1; mode=block',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()'
+      }
+    },
     '/api/**': {
       cors: true,
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET,HEAD,PUT,PATCH,POST,DELETE',
         'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-KEY'
+      }
+    },
+    // Email content iframe with relaxed CSP for safe rendering
+    '/email-content/**': {
+      headers: {
+        'Content-Security-Policy': [
+          "default-src 'none'",
+          "img-src 'self' data: https: blob:",
+          "style-src 'self' 'unsafe-inline'",
+          "font-src 'self' data:",
+          "media-src 'self' data: blob:",
+          "object-src 'none'",
+          "script-src 'none'",
+          "frame-ancestors 'self'"
+        ].join('; '),
+        'X-Frame-Options': 'SAMEORIGIN'
       }
     },
     '/admin/**': { ssr: false, prerender: false },
@@ -152,15 +215,43 @@ export default defineNuxtConfig({
           additionalData: '@import "~/assets/scss/variables.scss";'
         }
       }
+    },
+    optimizeDeps: {
+      include: ['vue', '@headlessui/vue', '@heroicons/vue/24/outline']
+    },
+    build: {
+      // Advanced code splitting
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Vendor chunks
+            'vendor-vue': ['vue', '@vue/runtime-core', '@vue/runtime-dom'],
+            'vendor-ui': ['@headlessui/vue', '@heroicons/vue/24/outline'],
+            'vendor-utils': ['@vueuse/core', '@vueuse/nuxt'],
+            // Feature-based chunks
+            'email-components': ['~/components/email/**'],
+            'dashboard-components': ['~/components/dashboard/**'],
+            'auth-components': ['~/components/auth/**']
+          }
+        }
+      },
+      // Chunk size warnings
+      chunkSizeWarningLimit: 1000,
+      // CSS code splitting
+      cssCodeSplit: true,
+      // Source maps for debugging
+      sourcemap: process.env.NODE_ENV === 'development'
     }
   },
 
   // Hooks
   hooks: {
     'build:before': () => {
+      // eslint-disable-next-line no-console
       console.log('🏗️  Building TechSci Labs Email Testing Platform...')
     },
     'build:done': () => {
+      // eslint-disable-next-line no-console
       console.log('✅ Build completed successfully!')
     }
   }

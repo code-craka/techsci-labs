@@ -13,12 +13,23 @@ import type {
   RefreshTokenResponse
 } from '~/types/api'
 
-// API Configuration
+// API Configuration (will be updated by runtime config)
 export const API_CONFIG = {
   baseURL: 'http://localhost:8000/api',
   timeout: 30000,
   retries: 3,
   retryDelay: 1000
+}
+
+// Update API config from runtime config (used in plugins)
+export function updateApiConfig(config: {
+  baseURL?: string
+  timeout?: number
+  retries?: number
+}) {
+  if (config.baseURL) API_CONFIG.baseURL = config.baseURL
+  if (config.timeout) API_CONFIG.timeout = config.timeout
+  if (config.retries) API_CONFIG.retries = config.retries
 }
 
 // HTTP Status Codes
@@ -122,9 +133,9 @@ export interface RequestOptions {
 
 // API Client Class
 export class ApiClient {
-  private baseURL: string
-  private timeout: number
-  private defaultRetries: number
+  public baseURL: string
+  public timeout: number
+  public defaultRetries: number
   private tokenStorage: TokenStorage
   private refreshPromise: Promise<string> | null = null
 
@@ -136,6 +147,19 @@ export class ApiClient {
     this.timeout = API_CONFIG.timeout
     this.defaultRetries = API_CONFIG.retries
     this.tokenStorage = tokenStorage
+  }
+
+  /**
+   * Update client configuration
+   */
+  updateConfig(config: {
+    baseURL?: string
+    timeout?: number
+    defaultRetries?: number
+  }) {
+    if (config.baseURL) this.baseURL = config.baseURL.replace(/\/$/, '')
+    if (config.timeout) this.timeout = config.timeout
+    if (config.defaultRetries) this.defaultRetries = config.defaultRetries
   }
 
   /**

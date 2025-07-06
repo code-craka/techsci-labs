@@ -1,0 +1,222 @@
+# TechSci Labs Email Testing Platform - Development Caddy Configuration
+# This configuration is optimized for local development
+
+# Global options for development
+{
+    # Enable admin API for development
+    admin 0.0.0.0:2019
+    
+    # Disable automatic HTTPS for development
+    auto_https off
+    
+    # Development email (not used for local certs)
+    email dev@techsci.local
+    
+    # Debug mode
+    debug
+    
+    # Local CA for development certificates
+    local_certs
+}
+
+# Development frontend (port 3000)
+localhost:3000, 127.0.0.1:3000 {
+    # Serve directly without proxy for development
+    respond "Frontend development server should be running on this port"
+    
+    # CORS headers for development
+    header {
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-KEY"
+        Access-Control-Allow-Credentials "true"
+    }
+    
+    # Handle preflight requests
+    @options method OPTIONS
+    respond @options 204
+    
+    # Development logging
+    log {
+        output file /var/log/caddy/dev-frontend.log
+        format console
+        level DEBUG
+    }
+}
+
+# Development API (port 8000)
+localhost:8000, 127.0.0.1:8000 {
+    # Proxy to backend for API requests
+    handle /api/* {
+        reverse_proxy backend:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    
+    # Health check endpoint
+    handle /health {
+        respond "Backend should be running"
+    }
+    
+    # CORS headers for API development
+    header {
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-KEY"
+        Access-Control-Allow-Credentials "true"
+    }
+    
+    # Handle preflight requests
+    @options method OPTIONS
+    respond @options 204
+    
+    # Development API logging
+    log {
+        output file /var/log/caddy/dev-api.log
+        format console
+        level DEBUG
+    }
+}
+
+# Development Mercure (port 3001)
+localhost:3001, 127.0.0.1:3001 {
+    # Proxy to Mercure hub
+    reverse_proxy mercure:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+    
+    # CORS headers for Mercure development
+    header {
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization, Last-Event-ID, Cache-Control"
+        Access-Control-Allow-Credentials "true"
+    }
+    
+    # Handle preflight requests
+    @options method OPTIONS
+    respond @options 204
+    
+    # Development Mercure logging
+    log {
+        output file /var/log/caddy/dev-mercure.log
+        format console
+        level DEBUG
+    }
+}
+
+# Development Webmail (port 8080)
+localhost:8080, 127.0.0.1:8080 {
+    # Proxy to webmail
+    reverse_proxy webmail:80 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+    
+    # Basic security headers for webmail
+    header {
+        X-Frame-Options SAMEORIGIN
+        X-Content-Type-Options nosniff
+    }
+    
+    # Development webmail logging
+    log {
+        output file /var/log/caddy/dev-webmail.log
+        format console
+        level DEBUG
+    }
+}
+
+# Unified development proxy (port 80)
+localhost, 127.0.0.1 {
+    # Frontend routes
+    handle /* {
+        reverse_proxy http://localhost:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    
+    # API routes
+    handle /api/* {
+        reverse_proxy http://localhost:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    
+    # Mercure SSE
+    handle /.well-known/mercure {
+        reverse_proxy http://localhost:3001 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    
+    # Webmail interface
+    handle /webmail/* {
+        uri strip_prefix /webmail
+        reverse_proxy http://localhost:8080 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-For {remote}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    
+    # Enable CORS for all development routes
+    header {
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-KEY, Last-Event-ID"
+        Access-Control-Allow-Credentials "true"
+    }
+    
+    # Handle preflight requests
+    @options method OPTIONS
+    respond @options 204
+    
+    # Enable compression for development
+    encode gzip
+    
+    # Development unified logging
+    log {
+        output file /var/log/caddy/dev-unified.log
+        format console
+        level DEBUG
+    }
+}
+
+# Development static file server (if needed)
+static.localhost {
+    root * /var/www/static
+    file_server browse
+    
+    # Cache static assets in development
+    @static {
+        file
+        path *.css *.js *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2
+    }
+    header @static Cache-Control "public, max-age=3600"
+    
+    # Static file logging
+    log {
+        output file /var/log/caddy/dev-static.log
+        format console
+        level INFO
+    }
+}
