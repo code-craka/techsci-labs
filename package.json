@@ -1,0 +1,62 @@
+{
+  "name": "techsci-labs",
+  "version": "1.0.0",
+  "description": "Professional email testing platform built with Nuxt.js and API-Platform",
+  "private": true,
+  "license": "MIT",
+  "author": {
+    "name": "TechSci Labs",
+    "email": "hello@techsci.dev",
+    "url": "https://techsci.dev"
+  },
+  "engines": {
+    "node": ">=18.17.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.1",
+  "workspaces": [
+    "frontend",
+    "email-server",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "pnpm --parallel run dev",
+    "build": "pnpm --parallel run build",
+    "start": "pnpm --parallel run start",
+    "lint": "pnpm --parallel run lint",
+    "test": "pnpm --parallel run test",
+    "clean": "pnpm --parallel run clean",
+    "frontend:dev": "pnpm --filter frontend dev",
+    "frontend:build": "pnpm --filter frontend build",
+    "email-server:dev": "pnpm --filter email-server dev",
+    "backend:install": "cd backend && composer install",
+    "backend:dev": "cd backend && symfony server:start",
+    "infrastructure:up": "docker-compose up -d",
+    "infrastructure:down": "docker-compose down",
+    "security:audit": "pnpm audit --audit-level moderate",
+    "security:fix": "pnpm audit --fix"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
+    "standard-version": "^9.5.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "happy-dom": ">=15.11.7",
+      "esbuild": ">=0.25.5",
+      "vitest": ">=2.1.8",
+      "@nuxt/test-utils": ">=3.19.2"
+    },
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "vitest"
+      ]
+    }
+  },
+  "dependencies": {
+    "eslint": "^9.30.1"
+  }
+}

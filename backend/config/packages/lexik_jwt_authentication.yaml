@@ -1,0 +1,207 @@
+lexik_jwt_authentication:
+    secret_key: '%env(resolve:JWT_SECRET_KEY)%'
+    public_key: '%env(resolve:JWT_PUBLIC_KEY)%'
+    pass_phrase: '%env(JWT_PASSPHRASE)%'
+    
+    # Token configuration
+    token_ttl: 3600  # 1 hour
+    clock_skew: 60   # 1 minute clock skew tolerance
+    
+    # User identity field
+    user_identity_field: email
+    
+    # User ID claim
+    user_id_claim: 'user_id'
+    
+    # Token extractor configuration
+    token_extractors:
+        authorization_header:
+            enabled: true
+            prefix: Bearer
+            name: Authorization
+        cookie:
+            enabled: true
+            name: BEARER
+        query_parameter:
+            enabled: false  # Disabled for security
+            name: bearer
+        split_cookie:
+            enabled: false
+
+    # Encoder configuration
+    encoder:
+        # Algorithm - RS256 for asymmetric keys, HS256 for symmetric
+        signature_algorithm: RS256
+        
+        # Encryption (optional)
+        # encryption_algorithm: A256GCM
+        # key_encryption_algorithm: RSA-OAEP-256
+
+    # Custom claims
+    set_cookies:
+        enabled: false  # We'll handle cookies manually for better control
+
+    # Token validation
+    check_path: '/api/auth/login'
+    username_path: 'email'
+    password_path: 'password'
+
+    # Success/failure handlers
+    success_handler: 'app.jwt.authentication_success_handler'
+    failure_handler: 'app.jwt.authentication_failure_handler'
+
+    # Refresh token configuration (if using refresh tokens)
+    refresh_token:
+        enabled: false  # We'll implement custom refresh logic
+        ttl: 604800     # 7 days
+        
+    # Custom payload enrichment
+    # We'll add custom claims via event listeners
+
+# Environment-specific configurations
+when@dev:
+    lexik_jwt_authentication:
+        token_ttl: 7200  # 2 hours in development
+        clock_skew: 300  # 5 minutes clock skew in development
+        
+        token_extractors:
+            query_parameter:
+                enabled: true  # Allow query parameter in development
+                name: token
+
+when@prod:
+    lexik_jwt_authentication:
+        token_ttl: 1800  # 30 minutes in production for security
+        clock_skew: 30   # 30 seconds clock skew in production
+        
+        token_extractors:
+            authorization_header:
+                enabled: true
+            cookie:
+                enabled: true
+            query_parameter:
+                enabled: false  # Always disabled in production
+
+when@test:
+    lexik_jwt_authentication:
+        token_ttl: 600   # 10 minutes in tests
+        clock_skew: 60   # 1 minute clock skew in tests
+        
+        # Use simpler algorithm for faster tests
+        encoder:
+            signature_algorithm: HS256
+        secret_key: 'test_secret_key_for_jwt_authentication_in_tests_only'
+        
+        token_extractors:
+            authorization_header:
+                enabled: true
+            query_parameter:
+                enabled: true
+                name: token
+
+# Custom services for JWT handling
+services:
+    # Custom authentication success handler
+    app.jwt.authentication_success_handler:
+        class: 'App\Security\JwtAuthenticationSuccessHandler'
+        arguments:
+            - '@lexik_jwt_authentication.jwt_manager'
+            - '@app.service.auth_service'
+            - '@app.service.nightwatch_service'
+            - '@logger'
+
+    # Custom authentication failure handler
+    app.jwt.authentication_failure_handler:
+        class: 'App\Security\JwtAuthenticationFailureHandler'
+        arguments:
+            - '@app.service.nightwatch_service'
+            - '@logger'
+
+    # JWT event listener for custom claims
+    app.jwt.created_listener:
+        class: 'App\EventListener\JwtCreatedListener'
+        arguments:
+            - '@app.repository.email_account_repository'
+            - '@security.token_storage'
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_jwt_created, method: onJwtCreated }
+
+    # JWT authenticated listener
+    app.jwt.authenticated_listener:
+        class: 'App\EventListener\JwtAuthenticatedListener'
+        arguments:
+            - '@app.service.auth_service'
+            - '@app.service.nightwatch_service'
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_jwt_authenticated, method: onJwtAuthenticated }
+
+    # JWT invalid listener  
+    app.jwt.invalid_listener:
+        class: 'App\EventListener\JwtInvalidListener'
+        arguments:
+            - '@app.service.nightwatch_service'
+            - '@logger'
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_jwt_invalid, method: onJwtInvalid }
+
+    # JWT not found listener
+    app.jwt.not_found_listener:
+        class: 'App\EventListener\JwtNotFoundListener'
+        arguments:
+            - '@logger'
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_jwt_not_found, method: onJwtNotFound }
+
+    # JWT expired listener
+    app.jwt.expired_listener:
+        class: 'App\EventListener\JwtExpiredListener'
+        arguments:
+            - '@app.service.nightwatch_service'
+            - '@logger'
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_jwt_expired, method: onJwtExpired }
+
+    # Custom JWT manager with additional features
+    app.jwt.enhanced_manager:
+        class: 'App\Service\EnhancedJwtManager'
+        arguments:
+            - '@lexik_jwt_authentication.jwt_manager'
+            - '@app.repository.token_repository'
+            - '@app.service.nightwatch_service'
+            - '@logger'
+
+    # JWT blacklist service for logout/revocation
+    app.jwt.blacklist_service:
+        class: 'App\Service\JwtBlacklistService'
+        arguments:
+            - '@doctrine_mongodb.odm.default_document_manager'
+            - '@cache.app'
+            - '@logger'
+
+    # Refresh token service
+    app.jwt.refresh_token_service:
+        class: 'App\Service\RefreshTokenService'
+        arguments:
+            - '@app.repository.token_repository'
+            - '@app.jwt.enhanced_manager'
+            - '@app.service.nightwatch_service'
+            - '@logger'
+
+# Additional JWT configuration for TechSci Labs
+parameters:
+    # Custom JWT claims for our application
+    jwt.custom_claims:
+        account_id: 'string'
+        domain_id: 'string'
+        permissions: 'array'
+        api_version: 'string'
+        client_info: 'object'
+        
+    # JWT issuer information
+    jwt.issuer: 'techsci-labs-email-platform'
+    jwt.audience: 'techsci-labs-api'
+    
+    # Security settings
+    jwt.max_refresh_attempts: 3
+    jwt.blacklist_cleanup_interval: 3600  # 1 hour
+    jwt.rate_limit_per_ip: 10  # 10 login attempts per minute per IP

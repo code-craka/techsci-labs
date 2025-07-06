@@ -1,0 +1,176 @@
+api_platform:
+    title: 'TechSci Labs Email Testing Platform API'
+    version: '1.0.0'
+    description: |
+        Professional email testing and development platform with MongoDB storage,
+        real-time notifications, and comprehensive email management capabilities.
+        
+        Features:
+        - Email account management with plus-sign aliasing
+        - Domain management with catch-all support
+        - Real-time email notifications via Mercure SSE
+        - Comprehensive attachment handling
+        - IMAP-compliant mailbox operations
+        - Advanced email search and filtering
+        - Token-based API authentication
+
+    # API Documentation
+    show_webby: false
+    swagger:
+        versions: [3]
+        api_keys:
+            apiKey:
+                name: Authorization
+                type: header
+        extra:
+            info:
+                contact:
+                    name: 'TechSci Labs API Support'
+                    url: 'https://techsci.dev/support'
+                    email: 'api-support@techsci.dev'
+                license:
+                    name: 'MIT'
+                    url: 'https://opensource.org/licenses/MIT'
+            servers:
+                - url: 'http://localhost:8000'
+                  description: 'Development server'
+                - url: 'https://api.techsci.dev'
+                  description: 'Production server'
+
+    # OpenAPI configuration
+    openapi:
+        contact:
+            name: 'TechSci Labs'
+            url: 'https://techsci.dev'
+            email: 'contact@techsci.dev'
+        license:
+            name: 'MIT'
+            url: 'https://opensource.org/licenses/MIT'
+
+    # Default pagination
+    collection:
+        pagination:
+            enabled: true
+            client_enabled: true
+            client_items_per_page: true
+            items_per_page: 25
+            maximum_items_per_page: 100
+            page_parameter_name: 'page'
+            enabled_parameter_name: 'pagination'
+            items_per_page_parameter_name: 'itemsPerPage'
+            partial: false
+
+    # Formats
+    formats:
+        jsonld: ['application/ld+json']
+        json: ['application/json']
+        html: ['text/html']
+        jsonhal: ['application/hal+json']
+        jsonapi: ['application/vnd.api+json']
+        xml: ['application/xml', 'text/xml']
+        yaml: ['application/x-yaml']
+        csv: ['text/csv']
+
+    # Error handling
+    error_formats:
+        jsonproblem: ['application/problem+json']
+        jsonld: ['application/ld+json']
+
+    # Doctrine configuration
+    doctrine:
+        enabled: false  # We use MongoDB ODM, not Doctrine ORM
+
+    # MongoDB ODM configuration  
+    mongodb_odm:
+        enabled: true
+
+    # Exception to HTTP status code mapping
+    exception_to_status:
+        Symfony\Component\Serializer\Exception\ExceptionInterface: 400
+        ApiPlatform\Core\Exception\InvalidArgumentException: 400
+        ApiPlatform\Core\Exception\FilterValidationException: 400
+        Doctrine\ORM\OptimisticLockException: 409
+        App\Exception\QuotaExceededException: 413
+        App\Exception\AttachmentTooLargeException: 413
+        App\Exception\DomainNotFoundException: 404
+        App\Exception\AccountNotFoundException: 404
+        App\Exception\MessageNotFoundException: 404
+
+    # HTTP cache
+    http_cache:
+        invalidation:
+            enabled: true
+            varnish_urls: ['%env(VARNISH_URL)%']
+            request_options:
+                timeout: 5
+        max_age: 0
+        shared_max_age: 3600
+        vary: ['Content-Type', 'Authorization', 'Origin']
+
+    # Assets configuration
+    asset_package: null
+
+    # Path segment name generator
+    path_segment_name_generator: 'api_platform.path_segment_name_generator.underscore'
+
+    # Enable GraphQL (optional)
+    graphql:
+        enabled: false
+        graphiql:
+            enabled: false
+        graphql_playground:
+            enabled: false
+
+    # Mercure integration
+    mercure:
+        enabled: true
+        hub_url: '%env(MERCURE_URL)%/.well-known/mercure'
+
+    # Security configuration
+    security: true
+
+    # Enable validator  
+    validator:
+        serialize_payload_fields: []
+
+    # Allow plain identifiers for relationships
+    allow_plain_identifiers: false
+
+    # Custom routes
+    routes:
+        api_entrypoint: '/api'
+        api_docs: '/api/docs'
+
+when@dev:
+    api_platform:
+        show_webby: true
+        enable_swagger_ui: true
+        enable_re_doc: true
+        swagger:
+            extra:
+                servers:
+                    - url: 'http://localhost:8000'
+                      description: 'Development server'
+
+when@prod:
+    api_platform:
+        show_webby: false
+        enable_swagger_ui: false
+        enable_re_doc: false
+        collection:
+            pagination:
+                items_per_page: 50
+                maximum_items_per_page: 200
+        http_cache:
+            max_age: 3600
+            shared_max_age: 7200
+
+when@test:
+    api_platform:
+        collection:
+            pagination:
+                items_per_page: 10
+                maximum_items_per_page: 50
+        http_cache:
+            max_age: 0
+            shared_max_age: 0

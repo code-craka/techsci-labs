@@ -1,0 +1,203 @@
+doctrine_mongodb:
+    connections:
+        default:
+            server: '%env(MONGODB_URL)%'
+            options:
+                username: '%env(MONGODB_USERNAME)%'
+                password: '%env(MONGODB_PASSWORD)%'
+                authSource: '%env(MONGODB_DB)%'
+                replicaSet: '%env(MONGODB_REPLICA_SET)%'
+                ssl: '%env(bool:MONGODB_SSL)%'
+                # Connection pool settings
+                maxPoolSize: 100
+                minPoolSize: 5
+                maxIdleTimeMS: 30000
+                waitQueueTimeoutMS: 5000
+                # Socket settings
+                connectTimeoutMS: 10000
+                socketTimeoutMS: 30000
+                # Server selection
+                serverSelectionTimeoutMS: 5000
+                heartbeatFrequencyMS: 10000
+                # Read/Write preferences
+                readPreference: 'primaryPreferred'
+                readConcern: 'majority'
+                writeConcern:
+                    w: 'majority'
+                    wtimeout: 5000
+                    j: true
+
+    default_database: '%env(MONGODB_DB)%'
+    
+    document_managers:
+        default:
+            connection: default
+            database: '%env(MONGODB_DB)%'
+            
+            # Mapping configuration
+            mappings:
+                App:
+                    is_bundle: false
+                    type: attribute
+                    dir: '%kernel.project_dir%/src/Document'
+                    prefix: 'App\Document'
+                    alias: App
+
+            # Metadata cache
+            metadata_cache_driver:
+                type: pool
+                pool: doctrine.system_cache_pool
+
+            # Logging and profiling
+            logging: '%kernel.debug%'
+            profiler:
+                enabled: '%kernel.debug%'
+
+            # Repository class
+            repository_class: 'Doctrine\ODM\MongoDB\Repository\DocumentRepository'
+
+            # Custom types
+            types:
+                email_address: 'App\Document\Type\EmailAddressType'
+                encrypted_string: 'App\Document\Type\EncryptedStringType'
+
+            # Filters
+            filters:
+                soft_deleteable:
+                    class: 'App\Filter\SoftDeleteableFilter'
+                    enabled: true
+                tenant:
+                    class: 'App\Filter\TenantFilter'
+                    enabled: false
+
+            # Index management
+            auto_generate_proxy_classes: '%kernel.debug%'
+            auto_generate_hydrator_classes: '%kernel.debug%'
+            
+            # GridFS configuration for file attachments
+            default_gridfs_buckets:
+                attachments:
+                    bucket_name: 'email_attachments'
+                    chunk_size_bytes: 261120  # 255KB chunks
+                    metadata:
+                        content_type: true
+                        virus_scan: true
+                        quarantine: false
+                email_content:
+                    bucket_name: 'email_content'
+                    chunk_size_bytes: 261120
+
+# Database configuration
+doctrine_migrations:
+    migrations_paths:
+        'App\Migrations': '%kernel.project_dir%/migrations'
+    storage:
+        table_storage:
+            table_name: 'doctrine_migration_versions'
+
+# Performance and optimization
+when@prod:
+    doctrine_mongodb:
+        document_managers:
+            default:
+                auto_generate_proxy_classes: false
+                auto_generate_hydrator_classes: false
+                metadata_cache_driver:
+                    type: pool
+                    pool: doctrine.metadata_cache_pool
+                query_cache_driver:
+                    type: pool
+                    pool: doctrine.query_cache_pool
+                result_cache_driver:
+                    type: pool  
+                    pool: doctrine.result_cache_pool
+
+        connections:
+            default:
+                options:
+                    # Production connection settings
+                    maxPoolSize: 200
+                    minPoolSize: 20
+                    maxIdleTimeMS: 60000
+                    waitQueueTimeoutMS: 10000
+                    # Enable compression in production
+                    compressors: ['snappy', 'zlib']
+                    zlibCompressionLevel: 6
+
+when@dev:
+    doctrine_mongodb:
+        document_managers:
+            default:
+                auto_generate_proxy_classes: true
+                auto_generate_hydrator_classes: true
+                logging: true
+                profiler:
+                    enabled: true
+                    pretty: true
+
+        connections:
+            default:
+                options:
+                    # Development connection settings
+                    maxPoolSize: 20
+                    minPoolSize: 2
+                    # Faster timeouts for development
+                    connectTimeoutMS: 5000
+                    socketTimeoutMS: 15000
+
+when@test:
+    doctrine_mongodb:
+        connections:
+            default:
+                server: '%env(MONGODB_TEST_URL)%'
+                options:
+                    username: '%env(MONGODB_TEST_USERNAME)%'
+                    password: '%env(MONGODB_TEST_PASSWORD)%'
+                    authSource: '%env(MONGODB_TEST_DB)%'
+                    # Test connection settings
+                    maxPoolSize: 5
+                    minPoolSize: 1
+                    connectTimeoutMS: 3000
+                    socketTimeoutMS: 5000
+
+        default_database: '%env(MONGODB_TEST_DB)%'
+        
+        document_managers:
+            default:
+                database: '%env(MONGODB_TEST_DB)%'
+                auto_generate_proxy_classes: true
+                auto_generate_hydrator_classes: true
+                logging: false
+                profiler:
+                    enabled: false
+
+# Custom services for MongoDB optimization
+services:
+    # Custom repository factory
+    app.mongodb.repository_factory:
+        class: 'App\Repository\CustomRepositoryFactory'
+        arguments:
+            - '@doctrine_mongodb.odm.default_document_manager'
+
+    # Custom event listeners
+    app.mongodb.event_listener:
+        class: 'App\EventListener\MongoDBEventListener'
+        arguments:
+            - '@logger'
+        tags:
+            - { name: doctrine_mongodb.odm.event_listener, event: 'preUpdate' }
+            - { name: doctrine_mongodb.odm.event_listener, event: 'postPersist' }
+            - { name: doctrine_mongodb.odm.event_listener, event: 'preRemove' }
+
+    # GridFS manager for file attachments
+    app.gridfs.attachment_manager:
+        class: 'App\Service\GridFSManager'
+        arguments:
+            - '@doctrine_mongodb.odm.default_document_manager'
+            - 'attachments'
+
+    app.gridfs.content_manager:
+        class: 'App\Service\GridFSManager'
+        arguments:
+            - '@doctrine_mongodb.odm.default_document_manager'
+            - 'email_content'

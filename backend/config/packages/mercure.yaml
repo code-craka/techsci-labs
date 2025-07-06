@@ -1,0 +1,249 @@
+mercure:
+    hubs:
+        default:
+            url: '%env(MERCURE_URL)%/.well-known/mercure'
+            public_url: '%env(MERCURE_PUBLIC_URL)%/.well-known/mercure'
+            jwt:
+                secret: '%env(MERCURE_JWT_SECRET)%'
+                publish: ['*']
+                subscribe: ['*']
+            
+            # Connection settings
+            timeout: 30
+            max_retries: 3
+            retry_delay: 1000  # 1 second
+            
+            # Enable keep-alive
+            enable_keep_alive: true
+            keep_alive_interval: 30
+            
+            # CORS settings
+            cors_allowed_origins:
+                - '%env(FRONTEND_URL)%'
+                - 'http://localhost:3000'
+                - 'https://localhost:3000'
+                - 'http://127.0.0.1:3000'
+                - 'https://techsci.dev'
+                - 'https://*.techsci.dev'
+
+    # Default publisher configuration
+    default_hub: default
+    
+    # Topic configuration for TechSci Labs
+    topics:
+        # Email-related topics
+        email:
+            new_message: '/accounts/{accountId}/emails'
+            message_update: '/accounts/{accountId}/emails/{messageId}'
+            mailbox_stats: '/accounts/{accountId}/mailboxes/{mailboxId}'
+            
+        # Account topics
+        account:
+            updates: '/accounts/{accountId}'
+            login: '/accounts/{accountId}/auth'
+            settings: '/accounts/{accountId}/settings'
+            
+        # Domain topics (admin only)
+        domain:
+            updates: '/domains/{domainId}'
+            dns_changes: '/domains/{domainId}/dns'
+            
+        # System topics (admin only)
+        system:
+            status: '/system/status'
+            alerts: '/system/alerts'
+            statistics: '/stats/{type}'
+            errors: '/system/errors'
+            
+        # Real-time API monitoring
+        api:
+            usage: '/api/usage'
+            tokens: '/api/tokens/{tokenId}'
+
+    # Security configuration
+    security:
+        enable_authorization: true
+        
+        # JWT claims for different user types
+        claims:
+            user:
+                mercure:
+                    subscribe:
+                        - '/accounts/{userId}/*'
+                        - '/stats/general'
+            admin:
+                mercure:
+                    subscribe: ['*']
+                    publish: ['*']
+            api:
+                mercure:
+                    subscribe:
+                        - '/accounts/{accountId}/*'
+                        - '/api/*'
+
+    # Cookie configuration for browser clients
+    cookie:
+        name: 'mercureAuthorization'
+        domain: '%env(COOKIE_DOMAIN)%'
+        path: '/'
+        secure: '%env(bool:COOKIE_SECURE)%'
+        http_only: true
+        same_site: 'lax'
+        lifetime: 3600  # 1 hour
+
+    # Event configuration
+    events:
+        # Email events
+        email_received:
+            topic: '/accounts/{accountId}/emails'
+            private: true
+            data_transformer: 'App\Mercure\Transformer\EmailTransformer'
+            
+        email_read:
+            topic: '/accounts/{accountId}/emails/{messageId}'
+            private: true
+            
+        email_deleted:
+            topic: '/accounts/{accountId}/emails/{messageId}'
+            private: true
+            
+        # Mailbox events
+        mailbox_updated:
+            topic: '/accounts/{accountId}/mailboxes/{mailboxId}'
+            private: true
+            data_transformer: 'App\Mercure\Transformer\MailboxTransformer'
+            
+        # Account events
+        account_login:
+            topic: '/accounts/{accountId}/auth'
+            private: true
+            
+        account_quota_warning:
+            topic: '/accounts/{accountId}'
+            private: true
+            
+        # System events (admin only)
+        system_alert:
+            topic: '/system/alerts'
+            private: true
+            roles: ['ROLE_ADMIN']
+            
+        domain_verification:
+            topic: '/domains/{domainId}'
+            private: true
+            roles: ['ROLE_ADMIN']
+
+    # Rate limiting for SSE connections
+    rate_limiting:
+        enabled: true
+        max_connections_per_ip: 50
+        max_connections_per_user: 10
+        connection_timeout: 3600  # 1 hour
+        
+        # Rate limits for publishing
+        publish_rate_limit:
+            max_per_minute: 100
+            max_per_hour: 1000
+            
+        # Rate limits for subscribing
+        subscribe_rate_limit:
+            max_per_minute: 200
+            max_per_hour: 2000
+
+# Environment-specific configurations
+when@dev:
+    mercure:
+        hubs:
+            default:
+                cors_allowed_origins:
+                    - '*'  # Allow all origins in development
+                    
+        rate_limiting:
+            enabled: false  # Disable rate limiting in development
+            
+        events:
+            # Enable debug events in development
+            debug_event:
+                topic: '/debug'
+                private: false
+
+when@prod:
+    mercure:
+        hubs:
+            default:
+                # Production CORS settings
+                cors_allowed_origins:
+                    - 'https://techsci.dev'
+                    - 'https://app.techsci.dev'
+                    - 'https://api.techsci.dev'
+                    
+                # Production timeout settings
+                timeout: 60
+                max_retries: 5
+                retry_delay: 2000
+                
+        rate_limiting:
+            enabled: true
+            max_connections_per_ip: 20  # Stricter in production
+            max_connections_per_user: 5
+            
+        cookie:
+            secure: true
+            domain: '.techsci.dev'
+
+when@test:
+    mercure:
+        hubs:
+            default:
+                url: 'http://localhost:3001/.well-known/mercure'
+                public_url: 'http://localhost:3001/.well-known/mercure'
+                timeout: 5
+                max_retries: 1
+                
+        rate_limiting:
+            enabled: false
+            
+        cookie:
+            secure: false
+            domain: 'localhost'
+
+# Custom services for Mercure integration
+services:
+    # Event subscribers for automatic SSE publishing
+    app.mercure.email_subscriber:
+        class: 'App\EventSubscriber\MercureEmailSubscriber'
+        arguments:
+            - '@mercure.hub.default'
+            - '@app.service.mercure_publisher'
+        tags:
+            - { name: 'kernel.event_subscriber' }
+
+    app.mercure.account_subscriber:
+        class: 'App\EventSubscriber\MercureAccountSubscriber'
+        arguments:
+            - '@mercure.hub.default'
+            - '@app.service.mercure_publisher'
+        tags:
+            - { name: 'kernel.event_subscriber' }
+
+    # JWT token generator for Mercure authorization
+    app.mercure.jwt_generator:
+        class: 'App\Service\MercureJwtGenerator'
+        arguments:
+            - '%env(MERCURE_JWT_SECRET)%'
+            - '@security.token_storage'
+
+    # Connection manager for monitoring SSE connections
+    app.mercure.connection_manager:
+        class: 'App\Service\MercureConnectionManager'
+        arguments:
+            - '@doctrine_mongodb.odm.default_document_manager'
+            - '@logger'
+
+    # Health check service for Mercure hub
+    app.mercure.health_check:
+        class: 'App\Service\MercureHealthCheck'
+        arguments:
+            - '@mercure.hub.default'
+            - '@app.service.nightwatch_service'
+            - '@logger'

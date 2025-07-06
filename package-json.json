@@ -1,0 +1,101 @@
+{
+  "name": "techsci-labs",
+  "version": "1.0.0",
+  "description": "Professional email testing platform built with Nuxt.js and API-Platform",
+  "private": true,
+  "license": "MIT",
+  "author": {
+    "name": "TechSci Labs",
+    "email": "hello@techsci.dev",
+    "url": "https://techsci.dev"
+  },
+  "homepage": "https://github.com/techsci-labs/email-testing-platform",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/techsci-labs/email-testing-platform.git"
+  },
+  "bugs": {
+    "url": "https://github.com/techsci-labs/email-testing-platform/issues"
+  },
+  "keywords": [
+    "email",
+    "testing",
+    "smtp",
+    "developers",
+    "nuxtjs",
+    "vue",
+    "api-platform",
+    "symfony",
+    "haraka",
+    "mercure"
+  ],
+  "engines": {
+    "node": ">=18.17.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.1",
+  "workspaces": [
+    "frontend",
+    "email-server",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "pnpm --parallel run dev",
+    "build": "pnpm --parallel run build",
+    "start": "pnpm --parallel run start",
+    "lint": "pnpm --parallel run lint",
+    "lint:fix": "pnpm --parallel run lint:fix",
+    "test": "pnpm --parallel run test",
+    "test:e2e": "pnpm --filter frontend test:e2e",
+    "type-check": "pnpm --parallel run type-check",
+    "clean": "pnpm --parallel run clean",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:build": "docker-compose build",
+    "infrastructure:setup": "ansible-playbook infrastructure/ansible/playbooks/setup.yml",
+    "backend:install": "cd backend && composer install",
+    "backend:migrate": "cd backend && php bin/console doctrine:mongodb:schema:create",
+    "backend:fixtures": "cd backend && php bin/console doctrine:mongodb:fixtures:load",
+    "haraka:start": "cd email-server && node_modules/.bin/haraka -c .",
+    "haraka:test": "cd email-server && npm test",
+    "caddy:start": "caddy run --config infrastructure/caddy/Caddyfile",
+    "caddy:reload": "caddy reload --config infrastructure/caddy/Caddyfile",
+    "mercure:start": "mercure run --config mercure/mercure.yaml",
+    "mongodb:start": "mongod --config infrastructure/mongodb/mongod.conf",
+    "prepare": "husky install",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major",
+    "release:patch": "standard-version --release-as patch"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^18.4.4",
+    "@commitlint/config-conventional": "^18.4.4",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "standard-version": "^9.5.0"
+  },
+  "lint-staged": {
+    "frontend/**/*.{js,jsx,ts,tsx,vue}": [
+      "pnpm --filter frontend lint:fix",
+      "git add"
+    ],
+    "email-server/**/*.{js,ts}": [
+      "pnpm --filter email-server lint:fix",
+      "git add"
+    ],
+    "backend/**/*.php": [
+      "cd backend && vendor/bin/php-cs-fixer fix",
+      "git add"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "name": "@techsci-labs/email-server",
+  "version": "1.0.0",
+  "description": "TechSci Labs Email Testing Platform - Haraka Email Server",
+  "private": true,
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "haraka -c ./config",
+    "dev": "haraka -c ./config --verbose",
+    "test": "haraka -c ./config --dry-run",
+    "install-plugins": "npm run install:core && npm run install:custom",
+    "install:core": "haraka --list-plugins",
+    "install:custom": "echo 'Installing custom plugins...'",
+    "lint": "eslint . --ext .js --fix",
+    "lint:check": "eslint . --ext .js",
+    "logs": "tail -f ./logs/haraka.log",
+    "clean": "rm -rf ./logs/* ./queue/* ./tmp/*",
+    "setup": "haraka --install ./",
+    "validate-config": "haraka --test-config"
+  },
+  "dependencies": {
+    "async": "^3.2.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "encoding": "^0.1.13",
+    "express-rate-limit": "^7.4.1",
+    "haraka": "^0.0.33",
+    "helmet": "^8.0.0",
+    "iconv-lite": "^0.6.3",
+    "joi": "^17.13.3",
+    "lodash": "^4.17.21",
+    "mime": "^4.0.4",
+    "moment": "^2.30.1",
+    "mongodb": "^6.9.0",
+    "nodemailer": "^6.9.15",
+    "uuid": "^10.0.0",
+    "winston": "^3.14.2",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "chai": "^5.1.1",
+    "eslint": "^8.57.1",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.6.0",
+    "mocha": "^10.7.3",
+    "nodemon": "^3.1.7",
+    "sinon": "^19.0.2",
+    "supertest": "^7.0.0"
+  },
+  "haraka": {
+    "version": "0.0.33",
+    "plugins": [
+      "access",
+      "dnsbl",
+      "helo.checks",
+      "mail_from.is_resolvable",
+      "rcpt_to.in_host_list",
+      "data.headers",
+      "spf",
+      "dkim_verify",
+      "attachment",
+      "clamd",
+      "karma",
+      "delay_deny",
+      "queue/mongodb"
+    ],
+    "config": {
+      "smtp": {
+        "listen": "0.0.0.0:25,0.0.0.0:587,0.0.0.0:2525"
+      },
+      "tls": {
+        "enabled": true,
+        "requestCert": false,
+        "rejectUnauthorized": false
+      }
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@9.12.1",
+  "keywords": [
+    "haraka",
+    "smtp",
+    "email-server",
+    "techsci-labs",
+    "email-testing",
+    "mail-server",
+    "nodejs"
+  ],
+  "author": "TechSci Labs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/techsci-labs/email-testing-platform.git",
+    "directory": "email-server"
+  },
+  "bugs": {
+    "url": "https://github.com/techsci-labs/email-testing-platform/issues"
+  },
+  "homepage": "https://github.com/techsci-labs/email-testing-platform#readme"
+}

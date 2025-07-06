@@ -1,0 +1,19 @@
+api_platform:
+    resource: .
+    type: api_platform
+    prefix: /api
+
+app_health:
+    path: /health
+    controller: App\Controller\HealthController::check
+    methods: [GET]
+
+app_auth:
+    resource: '../src/Controller/AuthController.php'
+    type: annotation
+    prefix: /api
+
+app_webhook:
+    resource: '../src/Controller/WebhookController.php'
+    type: annotation
+    prefix: /api/webhook

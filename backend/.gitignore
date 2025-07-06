@@ -1,0 +1,16 @@
+# Symfony specific
+/var/
+/vendor/
+.env.local
+.env.local.php
+.env.*.local
+
+# Logs
+*.log
+
+# Cache
+/var/cache/
+/var/log/
+
+# PHP specific
+composer.phar

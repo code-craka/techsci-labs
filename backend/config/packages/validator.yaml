@@ -1,0 +1,215 @@
+framework:
+    validation:
+        # Enable validation
+        enabled: true
+        
+        # Enable attribute validation (PHP 8+ attributes)
+        enable_attributes: true
+        
+        # Email validation mode
+        email_validation_mode: html5
+        
+        # Auto-mapping for validation
+        auto_mapping:
+            App\Document\: []
+            
+        # Mapping configuration
+        mapping:
+            paths:
+                - '%kernel.project_dir%/src/Document'
+                - '%kernel.project_dir%/src/Validator'
+
+        # Validation groups
+        default_group_sequence: [Default]
+        
+        # Translation domain for validation messages
+        translation_domain: validators
+        
+        # Cache validation metadata
+        cache: validator.mapping.cache.adapter
+        
+        # Enable expression language for validation
+        enable_annotations: false  # We use attributes instead
+        
+        # Validation message interpolation
+        strict_email: false
+        
+        # Custom constraint validators will be auto-registered
+
+# Validation configuration specific to TechSci Labs
+parameters:
+    # Email validation patterns
+    validation.email.allowed_domains:
+        - 'gmail.com'
+        - 'yahoo.com'
+        - 'outlook.com'
+        - 'hotmail.com'
+        - 'techsci.dev'
+        
+    validation.email.blocked_domains:
+        - '10minutemail.com'
+        - 'tempmail.org'
+        - 'guerrillamail.com'
+        
+    # Domain validation
+    validation.domain.max_length: 253
+    validation.domain.min_length: 4
+    
+    # Password validation
+    validation.password.min_length: 8
+    validation.password.max_length: 128
+    validation.password.require_mixed_case: true
+    validation.password.require_numbers: true
+    validation.password.require_special_chars: true
+    validation.password.special_chars: '!@#$%^&*()_+-=[]{}|;:,.<>?'
+    
+    # File validation
+    validation.file.max_size: '50M'
+    validation.file.allowed_mime_types:
+        # Images
+        - 'image/jpeg'
+        - 'image/png'
+        - 'image/gif'
+        - 'image/webp'
+        # Documents
+        - 'application/pdf'
+        - 'application/msword'
+        - 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        - 'application/vnd.ms-excel'
+        - 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        # Archives
+        - 'application/zip'
+        - 'application/x-rar-compressed'
+        - 'application/x-7z-compressed'
+        # Text
+        - 'text/plain'
+        - 'text/csv'
+        - 'application/json'
+        - 'application/xml'
+        
+    validation.file.virus_scan_enabled: true
+    validation.file.quarantine_suspicious: true
+
+# Custom validation services
+services:
+    # Email domain validator
+    App\Validator\EmailDomainValidator:
+        arguments:
+            - '%validation.email.allowed_domains%'
+            - '%validation.email.blocked_domains%'
+        tags:
+            - { name: validator.constraint_validator }
+
+    # Domain name validator
+    App\Validator\DomainNameValidator:
+        arguments:
+            - '@app.service.dns_resolver'
+        tags:
+            - { name: validator.constraint_validator }
+
+    # Password strength validator
+    App\Validator\PasswordStrengthValidator:
+        arguments:
+            - '%validation.password.min_length%'
+            - '%validation.password.require_mixed_case%'
+            - '%validation.password.require_numbers%'
+            - '%validation.password.require_special_chars%'
+            - '%validation.password.special_chars%'
+        tags:
+            - { name: validator.constraint_validator }
+
+    # File security validator
+    App\Validator\FileSecurityValidator:
+        arguments:
+            - '@app.service.virus_scanner'
+            - '%validation.file.allowed_mime_types%'
+            - '%validation.file.max_size%'
+        tags:
+            - { name: validator.constraint_validator }
+
+    # Plus aliasing validator
+    App\Validator\PlusAliasingValidator:
+        arguments:
+            - '@app.repository.domain_repository'
+        tags:
+            - { name: validator.constraint_validator }
+
+    # Unique email validator
+    App\Validator\UniqueEmailValidator:
+        arguments:
+            - '@app.repository.email_account_repository'
+        tags:
+            - { name: validator.constraint_validator }
+
+    # Account quota validator
+    App\Validator\AccountQuotaValidator:
+        arguments:
+            - '@app.repository.email_account_repository'
+        tags:
+            - { name: validator.constraint_validator }
+
+    # Domain capacity validator
+    App\Validator\DomainCapacityValidator:
+        arguments:
+            - '@app.repository.domain_repository'
+        tags:
+            - { name: validator.constraint_validator }
+
+    # API rate limit validator
+    App\Validator\ApiRateLimitValidator:
+        arguments:
+            - '@app.security.api_rate_limiter'
+            - '@cache.app'
+        tags:
+            - { name: validator.constraint_validator }
+
+    # Token scope validator
+    App\Validator\TokenScopeValidator:
+        arguments:
+            - '@app.service.auth_service'
+        tags:
+            - { name: validator.constraint_validator }
+
+# Environment-specific validation settings
+when@dev:
+    framework:
+        validation:
+            # More verbose validation in development
+            cache: null  # Disable cache for immediate updates
+            
+    parameters:
+        # Relaxed validation in development
+        validation.password.min_length: 6
+        validation.password.require_mixed_case: false
+        validation.password.require_special_chars: false
+        validation.file.virus_scan_enabled: false
+
+when@prod:
+    framework:
+        validation:
+            # Optimized validation for production
+            cache: validator.mapping.cache.adapter
+            
+    parameters:
+        # Strict validation in production
+        validation.password.min_length: 12
+        validation.password.require_mixed_case: true
+        validation.password.require_numbers: true
+        validation.password.require_special_chars: true
+        validation.file.virus_scan_enabled: true
+        validation.file.quarantine_suspicious: true
+
+when@test:
+    framework:
+        validation:
+            # Fast validation for tests
+            cache: null
+            
+    parameters:
+        # Simple validation for tests
+        validation.password.min_length: 4
+        validation.password.require_mixed_case: false
+        validation.password.require_numbers: false
+        validation.password.require_special_chars: false
+        validation.file.virus_scan_enabled: false
+        validation.file.max_size: '10M'

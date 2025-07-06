@@ -1,0 +1,293 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: techsci-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-techsci}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./infrastructure/mongodb/mongod.conf:/etc/mongod.conf:ro
+      - ./infrastructure/mongodb/init-scripts:/docker-entrypoint-initdb.d:ro
+    command: mongod --config /etc/mongod.conf
+    networks:
+      - techsci-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis Cache (for sessions and caching)
+  redis:
+    image: redis:7.2-alpine
+    container_name: techsci-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./infrastructure/redis/redis.conf:/etc/redis/redis.conf:ro
+    command: redis-server /etc/redis/redis.conf
+    networks:
+      - techsci-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Mercure Hub (Real-time SSE)
+  mercure:
+    image: dunglas/mercure:v0.15
+    container_name: techsci-mercure
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ':3000'
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_EXTRA_DIRECTIVES: |
+        cors_origins http://localhost:3000 http://localhost:8000 https://techsci.dev
+        publish_origins http://localhost:8000
+        demo
+        ui
+    ports:
+      - "3001:3000"
+    volumes:
+      - mercure_data:/data
+      - mercure_config:/config
+    networks:
+      - techsci-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/.well-known/mercure"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Symfony/API-Platform Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: ${APP_ENV:-dev}
+    container_name: techsci-backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_SECRET: ${APP_SECRET:-app-secret-key}
+      DATABASE_URL: mongodb://admin:password@mongodb:27017/techsci?authSource=admin
+      MERCURE_URL: http://mercure:3000/.well-known/mercure
+      MERCURE_PUBLIC_URL: http://localhost:3001/.well-known/mercure
+      MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET_KEY: ${JWT_SECRET:-jwt-secret}
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+      - /var/www/html/var
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mercure:
+        condition: service_healthy
+    networks:
+      - techsci-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Haraka Email Server
+  email-server:
+    build:
+      context: ./email-server
+      dockerfile: Dockerfile
+    container_name: techsci-email-server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      MONGODB_URI: mongodb://admin:password@mongodb:27017/techsci?authSource=admin
+      API_BASE_URL: http://backend:8000/api
+      MERCURE_URL: http://mercure:3000/.well-known/mercure
+      MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "25:25"     # SMTP
+      - "587:587"   # SMTP with STARTTLS
+      - "2525:2525" # Alternative SMTP
+      - "8025:8025" # Web UI
+    volumes:
+      - ./email-server:/app
+      - /app/node_modules
+      - email_logs:/app/logs
+      - email_queue:/app/queue
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - techsci-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "25"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Nuxt.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: ${NODE_ENV:-development}
+    container_name: techsci-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      API_BASE_URL: http://localhost:8000/api
+      MERCURE_URL: http://localhost:3001/.well-known/mercure
+      WEBMAIL_URL: http://localhost:8080
+      NITRO_HOST: 0.0.0.0
+      NITRO_PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.nuxt
+      - /app/.output
+    depends_on:
+      - backend
+      - mercure
+    networks:
+      - techsci-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Webmail Interface (Roundcube)
+  webmail:
+    image: roundcube/roundcubemail:1.6.x-apache
+    container_name: techsci-webmail
+    restart: unless-stopped
+    environment:
+      ROUNDCUBEMAIL_DB_TYPE: sqlite
+      ROUNDCUBEMAIL_SKIN: elastic
+      ROUNDCUBEMAIL_DEFAULT_HOST: email-server
+      ROUNDCUBEMAIL_DEFAULT_PORT: 143
+      ROUNDCUBEMAIL_SMTP_SERVER: email-server
+      ROUNDCUBEMAIL_SMTP_PORT: 587
+      ROUNDCUBEMAIL_PLUGINS: archive,zipdownload,managesieve
+      ROUNDCUBEMAIL_UPLOAD_MAX_FILESIZE: 25M
+      ROUNDCUBEMAIL_ASPELL_ENABLED: 1
+    ports:
+      - "8080:80"
+    volumes:
+      - webmail_data:/var/www/html
+      - ./infrastructure/webmail/config:/var/www/html/config:ro
+    depends_on:
+      - email-server
+    networks:
+      - techsci-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Caddy Web Server (Reverse Proxy)
+  caddy:
+    image: caddy:2.7-alpine
+    container_name: techsci-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019" # Admin API
+    volumes:
+      - ./infrastructure/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+      - webmail
+    networks:
+      - techsci-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2019/config/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Monitoring & Logs
+  portainer:
+    image: portainer/portainer-ce:2.19.4
+    container_name: techsci-portainer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - techsci-network
+
+  # Development Tools
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: techsci-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+    networks:
+      - techsci-network
+    profiles:
+      - dev
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  mercure_data:
+    driver: local
+  mercure_config:
+    driver: local
+  email_logs:
+    driver: local
+  email_queue:
+    driver: local
+  webmail_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+  portainer_data:
+    driver: local
+
+networks:
+  techsci-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

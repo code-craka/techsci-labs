@@ -1,0 +1,22 @@
+{
+  "name": "@techsci-labs/shared",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "jest": "^29.7.0",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}

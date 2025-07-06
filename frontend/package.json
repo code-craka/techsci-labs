@@ -1,0 +1,88 @@
+{
+  "name": "@techsci-labs/frontend",
+  "version": "1.0.0",
+  "description": "TechSci Labs Email Testing Platform - Frontend (Nuxt.js 3.x)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "start": "node .output/server/index.mjs",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
+    "lint:check": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts",
+    "type-check": "vue-tsc --noEmit",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf .nuxt .output node_modules/.cache"
+  },
+  "dependencies": {
+    "@formkit/auto-animate": "^0.8.2",
+    "@headlessui/vue": "^1.7.23",
+    "@heroicons/vue": "^2.1.5",
+    "@nuxt/ui": "^2.18.7",
+    "@nuxtjs/color-mode": "^3.5.1",
+    "@nuxtjs/tailwindcss": "^6.12.1",
+    "@pinia/nuxt": "^0.5.5",
+    "@vueuse/core": "^11.1.0",
+    "@vueuse/nuxt": "^11.1.0",
+    "date-fns": "^4.1.0",
+    "nuxt": "^3.13.2",
+    "pinia": "^2.2.4",
+    "primeicons": "^7.0.0",
+    "vue": "latest",
+    "vue-router": "latest",
+    "vue-toastification": "^2.0.0-rc.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "^1.5.2",
+    "@nuxt/eslint": "^0.5.7",
+    "@nuxt/test-utils": "^3.14.3",
+    "@types/node": "^22.7.5",
+    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/parser": "^8.8.1",
+    "@vitest/coverage-v8": "^2.1.2",
+    "@vitest/ui": "^3.2.4",
+    "@vue/test-utils": "^2.4.6",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.12.0",
+    "eslint-plugin-vue": "^9.28.0",
+    "happy-dom": "^15.7.4",
+    "postcss": "^8.4.47",
+    "sass": "^1.79.4",
+    "sass-loader": "^16.0.2",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.2",
+    "vue-tsc": "^2.1.6"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@9.12.1",
+  "keywords": [
+    "nuxt",
+    "vue",
+    "email-testing",
+    "techsci-labs",
+    "frontend",
+    "typescript",
+    "tailwindcss"
+  ],
+  "author": "TechSci Labs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/techsci-labs/email-testing-platform.git",
+    "directory": "frontend"
+  },
+  "bugs": {
+    "url": "https://github.com/techsci-labs/email-testing-platform/issues"
+  },
+  "homepage": "https://github.com/techsci-labs/email-testing-platform#readme"
+}

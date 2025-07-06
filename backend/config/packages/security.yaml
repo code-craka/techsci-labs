@@ -1,0 +1,247 @@
+security:
+    # Password hashers
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+        App\Document\EmailAccount:
+            algorithm: auto
+            migrate_from:
+                - bcrypt
+                - argon2i
+
+    # User providers
+    providers:
+        app_user_provider:
+            id: App\Repository\EmailAccountRepository
+        
+        # API key provider for service-to-service authentication
+        api_key_provider:
+            id: App\Security\ApiKeyUserProvider
+
+    # Firewalls
+    firewalls:
+        # Development toolbar
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+            
+        # API documentation
+        api_docs:
+            pattern: ^/api/docs
+            security: false
+            
+        # Health check endpoint
+        health:
+            pattern: ^/health
+            security: false
+            
+        # Webhook endpoints
+        webhook:
+            pattern: ^/webhook
+            security: false
+            
+        # Public authentication endpoints
+        api_auth:
+            pattern: ^/api/auth/(login|register|verify|reset|refresh)
+            stateless: true
+            provider: app_user_provider
+            json_login:
+                check_path: /api/auth/login
+                username_path: email
+                password_path: password
+                success_handler: app.jwt.authentication_success_handler
+                failure_handler: app.jwt.authentication_failure_handler
+            entry_point: app.jwt.authentication_failure_handler
+            
+        # Protected API endpoints
+        api:
+            pattern: ^/api
+            stateless: true
+            provider: app_user_provider
+            custom_authenticators:
+                - App\Security\ApiKeyAuthenticator
+                - lexik_jwt_authentication.jwt_token_authenticator
+            entry_point: lexik_jwt_authentication.jwt_token_authenticator
+            
+        # Admin interface (if needed)
+        admin:
+            pattern: ^/admin
+            provider: app_user_provider
+            form_login:
+                login_path: admin_login
+                check_path: admin_login
+                default_target_path: admin_dashboard
+            logout:
+                path: admin_logout
+                target: admin_login
+
+    # Role hierarchy
+    role_hierarchy:
+        ROLE_USER: []
+        ROLE_MODERATOR: [ROLE_USER]
+        ROLE_ADMIN: [ROLE_MODERATOR, ROLE_USER]
+        ROLE_SUPER_ADMIN: [ROLE_ADMIN, ROLE_MODERATOR, ROLE_USER]
+        ROLE_API: []  # For API-only access
+
+    # Access control rules
+    access_control:
+        # Public endpoints
+        - { path: ^/api/docs, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/(login|register|verify-email|forgot-password|reset-password), roles: PUBLIC_ACCESS }
+        - { path: ^/health, roles: PUBLIC_ACCESS }
+        - { path: ^/webhook, roles: PUBLIC_ACCESS }
+        
+        # Admin endpoints
+        - { path: ^/api/admin, roles: ROLE_ADMIN }
+        - { path: ^/admin, roles: ROLE_ADMIN }
+        
+        # User endpoints requiring authentication
+        - { path: ^/api/accounts/me, roles: ROLE_USER }
+        - { path: ^/api/domains, roles: ROLE_USER, methods: [GET] }
+        - { path: ^/api/domains, roles: ROLE_ADMIN, methods: [POST, PUT, PATCH, DELETE] }
+        - { path: ^/api/messages, roles: ROLE_USER }
+        - { path: ^/api/mailboxes, roles: ROLE_USER }
+        - { path: ^/api/attachments, roles: ROLE_USER }
+        - { path: ^/api/tokens, roles: ROLE_USER }
+        
+        # Require authentication for all other API endpoints
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+
+    # Security attributes for different contexts
+    security_expressions:
+        is_owner: "user.getId() == subject.getEmailAccount().getId()"
+        is_domain_admin: "user.getDomain().getId() == subject.getDomain().getId() or 'ROLE_ADMIN' in role_names"
+        can_access_message: "user.getId() == subject.getMailbox().getEmailAccount().getId() or 'ROLE_ADMIN' in role_names"
+
+# Environment-specific security configurations
+when@dev:
+    security:
+        firewalls:
+            api_auth:
+                # Enable remember me in development
+                remember_me:
+                    secret: '%kernel.secret%'
+                    lifetime: 604800  # 1 week
+                    
+            # Allow easier debugging in development
+            api:
+                access_denied_handler: app.security.access_denied_handler
+                
+        # Relaxed password requirements in development
+        password_hashers:
+            App\Document\EmailAccount:
+                algorithm: auto
+                cost: 4  # Lower cost for faster testing
+
+when@prod:
+    security:
+        # Production-specific security hardening
+        firewalls:
+            api:
+                # Rate limiting in production
+                rate_limiter:
+                    login_throttling:
+                        max_attempts: 5
+                        interval: '15 minutes'
+                        
+        # Stronger password hashing in production
+        password_hashers:
+            App\Document\EmailAccount:
+                algorithm: auto
+                cost: 15  # Higher cost for better security
+                memory_cost: 65536
+                time_cost: 4
+
+when@test:
+    security:
+        # Simplified security for tests
+        password_hashers:
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4
+                time_cost: 3
+                memory_cost: 10
+                
+        firewalls:
+            api:
+                http_basic: ~  # Allow basic auth in tests
+
+# Custom security services
+services:
+    # Custom user provider for API keys
+    App\Security\ApiKeyUserProvider:
+        arguments:
+            - '@app.repository.token_repository'
+            - '@logger'
+
+    # Custom access denied handler
+    app.security.access_denied_handler:
+        class: App\Security\AccessDeniedHandler
+        arguments:
+            - '@app.service.nightwatch_service'
+            - '@logger'
+
+    # Security event subscriber
+    app.security.event_subscriber:
+        class: App\EventSubscriber\SecurityEventSubscriber
+        arguments:
+            - '@app.service.nightwatch_service'
+            - '@app.service.mercure_publisher'
+            - '@logger'
+        tags:
+            - { name: kernel.event_subscriber }
+
+    # Login attempt tracker
+    app.security.login_attempt_tracker:
+        class: App\Security\LoginAttemptTracker
+        arguments:
+            - '@doctrine_mongodb.odm.default_document_manager'
+            - '@cache.app'
+            - '@logger'
+
+    # Two-factor authentication (optional)
+    app.security.two_factor_provider:
+        class: App\Security\TwoFactorAuthProvider
+        arguments:
+            - '@app.repository.email_account_repository'
+            - '@app.service.auth_service'
+
+    # Permission checker service
+    app.security.permission_checker:
+        class: App\Security\PermissionChecker
+        arguments:
+            - '@security.authorization_checker'
+            - '@security.token_storage'
+            - '@app.repository.email_account_repository'
+
+    # API rate limiter
+    app.security.api_rate_limiter:
+        class: App\Security\ApiRateLimiter
+        arguments:
+            - '@cache.app'
+            - '@app.service.nightwatch_service'
+            - '@logger'
+        tags:
+            - { name: kernel.event_subscriber }
+
+# Security parameters
+parameters:
+    # Authentication settings
+    security.session_timeout: 3600  # 1 hour
+    security.max_login_attempts: 5
+    security.lockout_duration: 900  # 15 minutes
+    
+    # API security settings
+    security.api_rate_limit: 1000  # requests per hour
+    security.api_burst_limit: 60   # requests per minute
+    
+    # Password policy
+    security.password_min_length: 8
+    security.password_require_uppercase: true
+    security.password_require_lowercase: true
+    security.password_require_numbers: true
+    security.password_require_special: true
+    
+    # Account security
+    security.max_failed_verifications: 3
+    security.verification_token_ttl: 86400  # 24 hours
+    security.reset_token_ttl: 3600         # 1 hour

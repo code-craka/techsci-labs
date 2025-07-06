@@ -1,0 +1,57 @@
+nightwatch:
+    enabled: '%env(bool:NIGHTWATCH_ENABLED)%'
+    api_key: '%env(NIGHTWATCH_API_KEY)%'
+    project_id: '%env(NIGHTWATCH_PROJECT_ID)%'
+    api_url: '%env(NIGHTWATCH_API_URL)%'
+    webhook_secret: '%env(NIGHTWATCH_WEBHOOK_SECRET)%'
+    
+    # Email monitoring configuration
+    monitoring:
+        enabled: true
+        check_interval: 300  # 5 minutes
+        timeout: 30
+        
+    # Alert configuration
+    alerts:
+        email_failures: true
+        server_downtime: true
+        performance_issues: true
+        quota_exceeded: true
+        attachment_limits: true
+        
+    # Notification channels
+    notifications:
+        slack_webhook: '%env(SLACK_WEBHOOK_URL)%'
+        discord_webhook: '%env(DISCORD_WEBHOOK_URL)%'
+        email_recipients:
+            - 'admin@techsci.dev'
+            - 'alerts@techsci.dev'
+            
+    # TechSci Labs specific monitoring
+    techsci_monitoring:
+        track_plus_aliasing: true
+        track_catch_all: true
+        track_api_usage: true
+        track_token_usage: true
+        
+    # Performance thresholds
+    thresholds:
+        email_processing_time: 5000  # 5 seconds
+        api_response_time: 1000      # 1 second  
+        message_queue_size: 1000     # messages
+        storage_usage_percent: 85    # %
+        
+when@prod:
+    nightwatch:
+        monitoring:
+            check_interval: 60  # 1 minute in production
+        alerts:
+            maintenance_mode: false
+            
+when@dev:
+    nightwatch:
+        enabled: '%env(bool:NIGHTWATCH_ENABLED)%'
+        monitoring:
+            check_interval: 600  # 10 minutes in development
+        alerts:
+            email_failures: false  # Reduce noise in development

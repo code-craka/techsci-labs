@@ -1,0 +1,19 @@
+#!/usr/bin/env php
+<?php
+
+use App\Kernel;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+
+if (!is_file(dirname(__DIR__).'/vendor/autoload.php')) {
+    throw new LogicException('Dependencies are missing. Try running "composer install".');
+}
+
+require_once dirname(__DIR__).'/vendor/autoload.php';
+
+if ($_SERVER['APP_DEBUG']) {
+    umask(0000);
+}
+
+$kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_DEBUG']);
+$application = new Application($kernel);
+$application->run();
